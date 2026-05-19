@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoLevels</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --surface3: #242436;
+    --border: rgba(255,255,255,0.07);
+    --border-hover: rgba(255,255,255,0.15);
+    --text: #f0f0f8;
+    --text-muted: #6b6b88;
+    --text-faint: #3a3a55;
+    --accent: #00e5a0;
+    --accent2: #7c6aff;
+    --danger: #ff4f6a;
+    --warning: #ffb800;
+    --combo: #ff7c2a;
+    --glow: rgba(0,229,160,0.15);
+    --glow2: rgba(124,106,255,0.15);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --radius-xs: 7px;
+  }
+  [data-theme="light"] {
+    --bg: #f0f2f8;
+    --surface: #ffffff;
+    --surface2: #e8eaf4;
+    --surface3: #dde0f0;
+    --border: rgba(0,0,0,0.08);
+    --border-hover: rgba(0,0,0,0.18);
+    --text: #0d0d1a;
+    --text-muted: #7a7a9a;
+    --text-faint: #c0c0d8;
+    --glow: rgba(0,180,120,0.1);
+    --glow2: rgba(100,80,220,0.1);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    transition: background 0.3s, color 0.3s;
+    overflow: hidden;
+  }
+
+  /* BACKGROUND */
+  .bg-grid {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .bg-orb {
+    position: fixed; border-radius: 50%; filter: blur(90px); pointer-events: none; z-index: 0;
+    opacity: 0.15;
+  }
+  .bg-orb-1 { width: 600px; height: 600px; background: var(--accent2); top: -150px; right: -150px; }
+  .bg-orb-2 { width: 500px; height: 500px; background: var(--accent); bottom: -120px; left: -120px; }
+
+  /* SCREEN SYSTEM */
+  .screen {
+    position: fixed; inset: 0; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  .screen.active { opacity: 1; pointer-events: all; }
+
+  /* TOP BAR */
+  .top-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px;
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  [data-theme="light"] .top-bar { background: rgba(240,242,248,0.9); }
+  .top-bar-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; letter-spacing: -0.5px; }
+  .top-bar-logo span { color: var(--accent); }
+  .top-bar-right { display: flex; align-items: center; gap: 10px; }
+
+  /* THEME TOGGLE */
+  .theme-toggle {
+    width: 44px; height: 24px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 999px; cursor: pointer; position: relative;
+    transition: background 0.3s; flex-shrink: 0;
+  }
+  .theme-toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); transition: transform 0.3s;
+  }
+  [data-theme="light"] .theme-toggle::after { transform: translateX(20px); }
+
+  /* HS BADGE */
+  .hs-badge {
+    font-size: 0.75rem; font-weight: 500;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 4px 12px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .hs-badge span { color: var(--warning); font-weight: 700; }
+
+  /* ========== WELCOME SCREEN ========== */
+  .welcome-inner { text-align: center; max-width: 540px; width: 100%; }
+  .welcome-title {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: clamp(3rem, 10vw, 5.5rem);
+    letter-spacing: -2px; line-height: 1;
+    margin-bottom: 8px;
+  }
+  .welcome-title .levels { color: var(--accent); }
+  .welcome-tagline {
+    color: var(--text-muted); font-size: 1rem;
+    margin-bottom: 36px;
+  }
+
+  /* REGION GRID */
+  .section-label {
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 12px; text-align: left;
+  }
+  .region-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-bottom: 28px;
+  }
+  .region-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px 8px;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    color: var(--text);
+  }
+  .region-btn:hover { border-color: var(--border-hover); background: var(--surface2); transform: translateY(-2px); }
+  .region-btn.selected { border-color: var(--accent); background: var(--glow); }
+  .region-btn .r-icon { font-size: 1.5rem; }
+  .region-btn .r-name { font-size: 0.75rem; font-weight: 500; color: var(--text-muted); }
+  .region-btn.selected .r-name { color: var(--accent); }
+
+  /* DIFFICULTY SELECTOR */
+  .diff-row { display: flex; gap: 8px; margin-bottom: 28px; }
+  .diff-btn {
+    flex: 1; padding: 10px 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-xs); cursor: pointer;
+    font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
+    transition: all 0.2s; text-align: center;
+  }
+  .diff-btn:hover { border-color: var(--border-hover); color: var(--text); }
+  .diff-btn.selected { border-color: var(--accent2); color: var(--accent2); background: var(--glow2); }
+  .diff-btn .diff-icon { font-size: 1rem; margin-bottom: 3px; display: block; }
+
+  /* START BUTTON */
+  .start-btn {
+    width: 100%; padding: 18px;
+    background: var(--accent); color: #000;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.05rem;
+    border: none; border-radius: var(--radius); cursor: pointer;
+    letter-spacing: 1px; text-transform: uppercase;
+    transition: all 0.2s; position: relative; overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,229,160,0.25);
+  }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,229,160,0.4); }
+  .start-btn:active { transform: translateY(0); }
+  .start-btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transform: translateX(-100%); transition: transform 0.5s;
+  }
+  .start-btn:hover::before { transform: translateX(100%); }
+
+  /* ========== QUIZ SCREEN ========== */
+  .quiz-wrap {
+    width: 100%; max-width: 620px;
+    padding-top: 72px;
+    height: 100vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .quiz-scroll {
+    flex: 1; overflow-y: auto; padding: 16px 0 24px;
+  }
+  .quiz-scroll::-webkit-scrollbar { width: 3px; }
+  .quiz-scroll::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 999px; }
+
+  /* QUIZ TOP ROW */
+  .quiz-top-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; gap: 8px;
+  }
+  .quiz-controls { display: flex; gap: 6px; }
+  .ctrl-btn {
+    width: 34px; height: 34px; border-radius: var(--radius-xs);
+    background: var(--surface); border: 1px solid var(--border);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; color: var(--text-muted); transition: all 0.15s;
+  }
+  .ctrl-btn:hover { border-color: var(--border-hover); color: var(--text); background: var(--surface2); }
+  .ctrl-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* LIVES */
+  .lives-display { display: flex; gap: 4px; align-items: center; }
+  .life-heart { font-size: 1rem; transition: all 0.3s; }
+  .life-heart.lost { opacity: 0.2; filter: grayscale(1); transform: scale(0.8); }
+
+  /* STATS ROW */
+  .stats-bar {
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }
+  .stat-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 10px 14px;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    flex: 1;
+  }
+  .stat-label { font-size: 0.6rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); }
+  .stat-value { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.25rem; }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.combo { color: var(--combo); }
+  .stat-value.timer { transition: color 0.3s; }
+  .stat-value.timer.urgent { color: var(--danger); animation: timerPulse 0.5s infinite alternate; }
+  @keyframes timerPulse { from { transform: scale(1); } to { transform: scale(1.15); } }
+
+  /* PROGRESS */
+  .progress-wrap {
+    background: var(--surface2); border-radius: 999px; height: 3px; margin-bottom: 20px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 999px; transition: width 0.5s ease;
+  }
+
+  /* POWER-UPS BAR */
+  .powerups-bar {
+    display: flex; gap: 8px; margin-bottom: 16px; justify-content: flex-end;
+  }
+  .power-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-xs); padding: 7px 14px;
+    cursor: pointer; transition: all 0.2s;
+    font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
+  }
+  .power-btn:hover:not(:disabled) { border-color: var(--warning); color: var(--warning); background: rgba(255,184,0,0.06); }
+  .power-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .power-btn .power-count {
+    background: var(--surface2); border-radius: 999px;
+    padding: 1px 7px; font-size: 0.7rem; font-weight: 700;
+    color: var(--text);
+  }
+
+  /* QUESTION CARD */
+  .question-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px 24px;
+    margin-bottom: 14px; text-align: center;
+    position: relative; overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .question-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, var(--glow2), transparent 70%);
+    pointer-events: none;
+  }
+  .q-type-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.65rem; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent2); background: rgba(124,106,255,0.1);
+    border: 1px solid rgba(124,106,255,0.2);
+    padding: 4px 12px; border-radius: 999px; margin-bottom: 16px;
+  }
+  .q-display {
+    font-size: clamp(3.5rem, 14vw, 5.5rem); margin-bottom: 10px;
+    display: block;
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .q-text { font-size: 0.95rem; color: var(--text-muted); line-height: 1.55; }
+  .q-text strong { color: var(--text); font-weight: 600; }
+
+  /* HINT REVEAL */
+  .hint-reveal {
+    margin-top: 12px; padding: 10px 16px;
+    background: rgba(255,184,0,0.08); border: 1px solid rgba(255,184,0,0.2);
+    border-radius: var(--radius-xs);
+    font-size: 0.82rem; color: var(--warning);
+    display: none; animation: fadeIn 0.3s ease;
+  }
+  .hint-reveal.show { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* OPTIONS */
+  .options-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 9px; margin-bottom: 14px;
+  }
+  .option-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 13px 14px;
+    cursor: pointer; transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+    color: var(--text); text-align: left;
+    display: flex; align-items: center; gap: 10px;
+    position: relative; overflow: hidden;
+  }
+  .option-btn:hover:not(:disabled) {
+    border-color: var(--accent2); background: var(--surface2); transform: translateY(-1px);
+    box-shadow: 0 4px 14px var(--glow2);
+  }
+  .option-btn.correct { border-color: var(--accent) !important; background: rgba(0,229,160,0.1) !important; color: var(--accent); }
+  .option-btn.wrong { border-color: var(--danger) !important; background: rgba(255,79,106,0.1) !important; color: var(--danger); }
+  .option-btn.eliminated { opacity: 0.25; cursor: not-allowed; }
+  .option-btn:disabled { cursor: default; }
+  .opt-letter {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.68rem; font-weight: 700; color: var(--text-muted);
+    flex-shrink: 0; transition: all 0.2s;
+  }
+  .option-btn.correct .opt-letter { background: var(--accent); color: #000; border-color: var(--accent); }
+  .option-btn.wrong .opt-letter { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+  /* TYPING INPUT */
+  .type-input-wrap { margin-bottom: 10px; position: relative; }
+  .type-input {
+    width: 100%; padding: 15px 18px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 1rem;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .type-input:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px var(--glow2); }
+  .type-input.correct { border-color: var(--accent); background: rgba(0,229,160,0.05); }
+  .type-input.wrong { border-color: var(--danger); background: rgba(255,79,106,0.05); }
+  .submit-btn {
+    width: 100%; padding: 13px;
+    background: var(--accent2); color: #fff;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.88rem;
+    border: none; border-radius: var(--radius-sm); cursor: pointer;
+    letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s;
+  }
+  .submit-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* SKIP ROW */
+  .skip-row {
+    display: flex; justify-content: center; margin-bottom: 4px;
+  }
+  .skip-link {
+    font-size: 0.78rem; color: var(--text-faint);
+    cursor: pointer; transition: color 0.2s;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .skip-link:hover { color: var(--text-muted); }
+  .skip-count-badge {
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 1px 7px; border-radius: 999px; font-size: 0.7rem;
+  }
+
+  /* COMBO TOAST */
+  .combo-toast {
+    position: fixed; top: 76px; left: 50%; transform: translateX(-50%);
+    background: var(--combo); color: #fff;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem;
+    padding: 9px 22px; border-radius: 999px;
+    z-index: 200; pointer-events: none;
+    opacity: 0; transition: opacity 0.25s;
+    white-space: nowrap; box-shadow: 0 4px 20px rgba(255,124,42,0.4);
+  }
+  .combo-toast.show { opacity: 1; }
+
+  /* FEEDBACK OVERLAY */
+  .feedback-overlay {
+    position: fixed; inset: 0; z-index: 150;
+    pointer-events: none; display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .feedback-overlay.show { opacity: 1; }
+  .feedback-icon { font-size: 5.5rem; animation: popIn 0.3s ease; filter: drop-shadow(0 0 20px rgba(0,0,0,0.5)); }
+
+  /* ========== PAUSE OVERLAY ========== */
+  .pause-overlay {
+    position: fixed; inset: 0; z-index: 500;
+    background: rgba(10,10,15,0.92);
+    backdrop-filter: blur(16px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  [data-theme="light"] .pause-overlay { background: rgba(240,242,248,0.92); }
+  .pause-overlay.show { opacity: 1; pointer-events: all; }
+  .pause-title {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: 2.5rem; letter-spacing: -1px;
+    margin-bottom: 8px;
+  }
+  .pause-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px; }
+  .pause-btn-row { display: flex; flex-direction: column; gap: 10px; width: 280px; }
+  .pause-btn {
+    width: 100%; padding: 15px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.9rem;
+    border-radius: var(--radius-sm); cursor: pointer;
+    letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s;
+    border: none;
+  }
+  .pause-btn.resume { background: var(--accent); color: #000; box-shadow: 0 4px 20px rgba(0,229,160,0.3); }
+  .pause-btn.resume:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,229,160,0.4); }
+  .pause-btn.restart { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .pause-btn.restart:hover { border-color: var(--accent2); color: var(--accent2); }
+  .pause-btn.quit { background: transparent; color: var(--danger); border: 1px solid rgba(255,79,106,0.3); }
+  .pause-btn.quit:hover { background: rgba(255,79,106,0.08); border-color: var(--danger); }
+
+  /* PAUSE STATS */
+  .pause-stats {
+    display: flex; gap: 12px; margin-bottom: 4px;
+  }
+  .pause-stat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 20px; text-align: center;
+    min-width: 80px;
+  }
+  .pause-stat-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.5rem; color: var(--accent); }
+  .pause-stat-lbl { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+  /* ========== RESULTS SCREEN ========== */
+  .results-inner { text-align: center; max-width: 520px; width: 100%; padding-top: 72px; }
+  .results-scroll { overflow-y: auto; max-height: calc(100vh - 72px); padding-bottom: 24px; }
+  .results-scroll::-webkit-scrollbar { width: 3px; }
+  .results-scroll::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 999px; }
+  .results-title {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: clamp(2rem, 8vw, 3rem); letter-spacing: -1px; margin-bottom: 4px;
+  }
+  .results-subtitle { color: var(--text-muted); margin-bottom: 28px; font-size: 0.88rem; }
+  .score-display {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px; margin-bottom: 14px;
+    position: relative; overflow: hidden;
+  }
+  .score-display::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, var(--glow), transparent 65%);
+  }
+  .score-big {
+    font-family: 'Syne', sans-serif; font-weight: 800;
+    font-size: clamp(3.5rem, 15vw, 5.5rem); color: var(--accent);
+    letter-spacing: -3px; line-height: 1;
+    animation: countUp 0.8s cubic-bezier(0.34,1.3,0.64,1);
+  }
+  .score-total { color: var(--text-muted); font-size: 1rem; margin-bottom: 14px; }
+  .rating-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 7px 18px; border-radius: 999px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem;
+  }
+  .new-record {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--warning); font-weight: 700; font-size: 0.82rem;
+    margin-top: 10px; background: rgba(255,184,0,0.1);
+    border: 1px solid rgba(255,184,0,0.2); padding: 4px 14px; border-radius: 999px;
+  }
+  .stats-results {
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: 8px; margin-bottom: 14px;
+  }
+  .stat-result-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px 10px; text-align: center;
+  }
+  .stat-result-val { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.3rem; }
+  .stat-result-lbl { font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+
+  /* SHARE */
+  .share-box {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 13px 16px;
+    font-size: 0.82rem; color: var(--text-muted);
+    margin-bottom: 14px; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .share-box:hover { border-color: var(--accent); }
+  .share-copy-btn {
+    background: var(--accent); color: #000;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; padding: 5px 12px; border-radius: 6px;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .results-btns { display: flex; gap: 10px; }
+  .btn-primary {
+    flex: 1; padding: 15px;
+    background: var(--accent); color: #000;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.9rem;
+    border: none; border-radius: var(--radius-sm); cursor: pointer;
+    letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(0,229,160,0.25);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,229,160,0.35); }
+  .btn-secondary {
+    flex: 1; padding: 15px;
+    background: var(--surface); color: var(--text);
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.9rem;
+    border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer;
+    letter-spacing: 1px; text-transform: uppercase; transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent2); transform: translateY(-2px); }
+
+  /* ========== ANIMATIONS ========== */
+  @keyframes popIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes countUp {
+    0% { transform: scale(0.4); opacity: 0; }
+    65% { transform: scale(1.08); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(5px); }
+  }
+  @keyframes slideUp {
+    0% { transform: translateY(28px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  .s1 { animation: slideUp 0.5s ease forwards; }
+  .s2 { animation: slideUp 0.5s 0.08s ease forwards; opacity: 0; }
+  .s3 { animation: slideUp 0.5s 0.16s ease forwards; opacity: 0; }
+  .s4 { animation: slideUp 0.5s 0.24s ease forwards; opacity: 0; }
+  .s5 { animation: slideUp 0.5s 0.32s ease forwards; opacity: 0; }
+
+  /* CONFETTI */
+  .confetti-piece {
+    position: fixed; border-radius: 2px; pointer-events: none; z-index: 600;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* LOSE LIFE ANIM */
+  @keyframes heartShake {
+    0%,100% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(-20deg) scale(1.3); }
+    75% { transform: rotate(20deg) scale(1.3); }
+  }
+
+  /* MOBILE */
+  @media (max-width: 480px) {
+    .options-grid { grid-template-columns: 1fr; }
+    .region-grid { grid-template-columns: repeat(3, 1fr); }
+    .pause-stats { gap: 8px; }
+    .quiz-wrap { max-width: 100%; padding: 0 4px; padding-top: 68px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="top-bar-logo"><span>Geo</span>Levels</div>
+  <div class="top-bar-right">
+    <div class="hs-badge">Best: <span id="hsDisplay">0</span></div>
+    <div class="theme-toggle" id="themeToggle" title="Toggle theme"></div>
+  </div>
+</div>
+
+<!-- COMBO TOAST -->
+<div class="combo-toast" id="comboToast"></div>
+
+<!-- FEEDBACK OVERLAY -->
+<div class="feedback-overlay" id="feedbackOverlay">
+  <div class="feedback-icon" id="feedbackIcon"></div>
+</div>
+
+<!-- PAUSE OVERLAY -->
+<div class="pause-overlay" id="pauseOverlay">
+  <div class="pause-title">⏸ Paused</div>
+  <div class="pause-subtitle">Take a breath — your progress is saved</div>
+  <div class="pause-stats">
+    <div class="pause-stat">
+      <div class="pause-stat-val" id="pauseScore">0</div>
+      <div class="pause-stat-lbl">Score</div>
+    </div>
+    <div class="pause-stat">
+      <div class="pause-stat-val" id="pauseQ">0/30</div>
+      <div class="pause-stat-lbl">Question</div>
+    </div>
+    <div class="pause-stat">
+      <div class="pause-stat-val" id="pauseLives">❤️❤️❤️</div>
+      <div class="pause-stat-lbl">Lives</div>
+    </div>
+  </div>
+  <div class="pause-btn-row">
+    <button class="pause-btn resume" id="pauseResumeBtn">▶ Resume Quiz</button>
+    <button class="pause-btn restart" id="pauseRestartBtn">↺ Restart Round</button>
+    <button class="pause-btn quit" id="pauseQuitBtn">✕ Quit to Menu</button>
+  </div>
+</div>
+
+<!-- SCREEN: WELCOME -->
+<div class="screen active" id="screenWelcome">
+  <div class="welcome-inner">
+    <div class="welcome-title s1"><span>Geo</span><span class="levels">Levels</span></div>
+    <div class="welcome-tagline s2">How well do you know the world?</div>
+    <div class="section-label s3">Choose a region</div>
+    <div class="region-grid s3" id="regionGrid">
+      <div class="region-btn selected" data-region="all"><div class="r-icon">🌐</div><div class="r-name">All</div></div>
+      <div class="region-btn" data-region="africa"><div class="r-icon">🌍</div><div class="r-name">Africa</div></div>
+      <div class="region-btn" data-region="asia"><div class="r-icon">🌏</div><div class="r-name">Asia</div></div>
+      <div class="region-btn" data-region="europe"><div class="r-icon">🏰</div><div class="r-name">Europe</div></div>
+      <div class="region-btn" data-region="americas"><div class="r-icon">🌎</div><div class="r-name">Americas</div></div>
+      <div class="region-btn" data-region="oceania"><div class="r-icon">🐚</div><div class="r-name">Oceania</div></div>
+    </div>
+    <div class="section-label s4">Difficulty</div>
+    <div class="diff-row s4" id="diffRow">
+      <div class="diff-btn selected" data-diff="progressive">
+        <span class="diff-icon">📈</span>Progressive
+      </div>
+      <div class="diff-btn" data-diff="easy">
+        <span class="diff-icon">🌱</span>Easy
+      </div>
+      <div class="diff-btn" data-diff="hard">
+        <span class="diff-icon">🔥</span>Hard
+      </div>
+    </div>
+    <button class="start-btn s5" id="startBtn">Start Quiz →</button>
+  </div>
+</div>
+
+<!-- SCREEN: QUIZ -->
+<div class="screen" id="screenQuiz">
+  <div class="quiz-wrap">
+    <div class="quiz-scroll">
+
+      <!-- Top controls row -->
+      <div class="quiz-top-row">
+        <div class="lives-display" id="livesDisplay"></div>
+        <div class="quiz-controls">
+          <div class="ctrl-btn" id="pauseBtn" title="Pause">⏸</div>
+          <div class="ctrl-btn danger" id="quitBtnQuiz" title="Quit to menu">✕</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-bar">
+        <div class="stat-box">
+          <div class="stat-label">Score</div>
+          <div class="stat-value accent" id="scoreDisplay">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Combo</div>
+          <div class="stat-value combo" id="comboDisplay">x0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Time</div>
+          <div class="stat-value timer" id="timerDisplay">15</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Q</div>
+          <div class="stat-value" id="qNumDisplay">1/30</div>
+        </div>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-wrap">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+
+      <!-- Power-ups -->
+      <div class="powerups-bar">
+        <button class="power-btn" id="hintBtn" title="Eliminate one wrong answer">
+          💡 Hint <span class="power-count" id="hintCount">3</span>
+        </button>
+        <button class="power-btn" id="skipBtn" title="Skip this question">
+          ⏭ Skip <span class="power-count" id="skipCount">2</span>
+        </button>
+      </div>
+
+      <!-- Question card -->
+      <div class="question-card" id="questionCard">
+        <div class="q-type-tag" id="qTypeTag">Flag</div>
+        <span class="q-display" id="qDisplay">🏳️</span>
+        <div class="q-text" id="qText">Which country does this flag belong to?</div>
+        <div class="hint-reveal" id="hintReveal"></div>
+      </div>
+
+      <!-- Answers -->
+      <div id="answersArea"></div>
+
+      <!-- Skip link -->
+      <div class="skip-row" id="skipRow">
+        <span class="skip-link" id="skipLink">
+          Skip question ⏭ <span class="skip-count-badge" id="skipBadge">2 left</span>
+        </span>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: RESULTS -->
+<div class="screen" id="screenResults">
+  <div class="results-inner">
+    <div class="results-scroll">
+      <div class="results-title s1" id="resultsTitle">Quiz Complete!</div>
+      <div class="results-subtitle s2" id="resultsSubtitle">Here's how you did</div>
+      <div class="score-display s2">
+        <div class="score-big" id="finalScore">0</div>
+        <div class="score-total" id="finalTotal">out of 30 questions</div>
+        <div class="rating-badge" id="ratingBadge">🌱 Beginner</div>
+        <div id="newRecordBadge" style="display:none">
+          <div class="new-record">🏆 New High Score!</div>
+        </div>
+      </div>
+      <div class="stats-results s3">
+        <div class="stat-result-box">
+          <div class="stat-result-val" id="resCorrect">0</div>
+          <div class="stat-result-lbl">Correct</div>
+        </div>
+        <div class="stat-result-box">
+          <div class="stat-result-val" id="resAccuracy">0%</div>
+          <div class="stat-result-lbl">Accuracy</div>
+        </div>
+        <div class="stat-result-box">
+          <div class="stat-result-val" id="resMaxCombo">x0</div>
+          <div class="stat-result-lbl">Max Combo</div>
+        </div>
+      </div>
+      <div class="share-box s4" id="shareBox">
+        <div class="share-box-text" id="shareText">📋 Copy score to clipboard</div>
+        <div class="share-copy-btn">Copy</div>
+      </div>
+      <div class="results-btns s5">
+        <button class="btn-primary" id="playAgainBtn">Play Again</button>
+        <button class="btn-secondary" id="changeRegionBtn">Change Region</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== DATA =====================
+const COUNTRIES = [
+  // Africa
+  {name:"Nigeria",flag:"🇳🇬",capital:"Abuja",currency:"Naira (₦)",region:"africa",difficulty:1},
+  {name:"Egypt",flag:"🇪🇬",capital:"Cairo",currency:"Egyptian Pound (£E)",region:"africa",difficulty:1},
+  {name:"South Africa",flag:"🇿🇦",capital:"Pretoria",currency:"Rand (R)",region:"africa",difficulty:1},
+  {name:"Kenya",flag:"🇰🇪",capital:"Nairobi",currency:"Kenyan Shilling (KSh)",region:"africa",difficulty:1},
+  {name:"Ghana",flag:"🇬🇭",capital:"Accra",currency:"Ghanaian Cedi (₵)",region:"africa",difficulty:2},
+  {name:"Ethiopia",flag:"🇪🇹",capital:"Addis Ababa",currency:"Ethiopian Birr (Br)",region:"africa",difficulty:2},
+  {name:"Tanzania",flag:"🇹🇿",capital:"Dodoma",currency:"Tanzanian Shilling (TSh)",region:"africa",difficulty:2},
+  {name:"Morocco",flag:"🇲🇦",capital:"Rabat",currency:"Moroccan Dirham (MAD)",region:"africa",difficulty:2},
+  {name:"Senegal",flag:"🇸🇳",capital:"Dakar",currency:"West African CFA Franc",region:"africa",difficulty:3},
+  {name:"Zimbabwe",flag:"🇿🇼",capital:"Harare",currency:"Zimbabwean Dollar (ZWL)",region:"africa",difficulty:3},
+  {name:"Uganda",flag:"🇺🇬",capital:"Kampala",currency:"Ugandan Shilling (USh)",region:"africa",difficulty:3},
+  {name:"Cameroon",flag:"🇨🇲",capital:"Yaoundé",currency:"Central African CFA Franc",region:"africa",difficulty:3},
+  {name:"Mozambique",flag:"🇲🇿",capital:"Maputo",currency:"Mozambican Metical (MT)",region:"africa",difficulty:4},
+  {name:"Botswana",flag:"🇧🇼",capital:"Gaborone",currency:"Botswana Pula (P)",region:"africa",difficulty:4},
+  {name:"Namibia",flag:"🇳🇦",capital:"Windhoek",currency:"Namibian Dollar (N$)",region:"africa",difficulty:4},
+  {name:"Rwanda",flag:"🇷🇼",capital:"Kigali",currency:"Rwandan Franc (RF)",region:"africa",difficulty:4},
+  {name:"Ivory Coast",flag:"🇨🇮",capital:"Yamoussoukro",currency:"West African CFA Franc",region:"africa",difficulty:4},
+  {name:"Zambia",flag:"🇿🇲",capital:"Lusaka",currency:"Zambian Kwacha (ZK)",region:"africa",difficulty:4},
+  // Asia
+  {name:"Japan",flag:"🇯🇵",capital:"Tokyo",currency:"Japanese Yen (¥)",region:"asia",difficulty:1},
+  {name:"China",flag:"🇨🇳",capital:"Beijing",currency:"Chinese Yuan (¥)",region:"asia",difficulty:1},
+  {name:"India",flag:"🇮🇳",capital:"New Delhi",currency:"Indian Rupee (₹)",region:"asia",difficulty:1},
+  {name:"South Korea",flag:"🇰🇷",capital:"Seoul",currency:"South Korean Won (₩)",region:"asia",difficulty:1},
+  {name:"Indonesia",flag:"🇮🇩",capital:"Jakarta",currency:"Indonesian Rupiah (Rp)",region:"asia",difficulty:2},
+  {name:"Thailand",flag:"🇹🇭",capital:"Bangkok",currency:"Thai Baht (฿)",region:"asia",difficulty:2},
+  {name:"Vietnam",flag:"🇻🇳",capital:"Hanoi",currency:"Vietnamese Dong (₫)",region:"asia",difficulty:2},
+  {name:"Pakistan",flag:"🇵🇰",capital:"Islamabad",currency:"Pakistani Rupee (₨)",region:"asia",difficulty:2},
+  {name:"Bangladesh",flag:"🇧🇩",capital:"Dhaka",currency:"Bangladeshi Taka (৳)",region:"asia",difficulty:3},
+  {name:"Myanmar",flag:"🇲🇲",capital:"Naypyidaw",currency:"Myanmar Kyat (K)",region:"asia",difficulty:3},
+  {name:"Sri Lanka",flag:"🇱🇰",capital:"Sri Jayawardenepura Kotte",currency:"Sri Lankan Rupee (Rs)",region:"asia",difficulty:3},
+  {name:"Nepal",flag:"🇳🇵",capital:"Kathmandu",currency:"Nepalese Rupee (Rs)",region:"asia",difficulty:3},
+  {name:"Malaysia",flag:"🇲🇾",capital:"Kuala Lumpur",currency:"Malaysian Ringgit (RM)",region:"asia",difficulty:2},
+  {name:"Philippines",flag:"🇵🇭",capital:"Manila",currency:"Philippine Peso (₱)",region:"asia",difficulty:2},
+  {name:"Saudi Arabia",flag:"🇸🇦",capital:"Riyadh",currency:"Saudi Riyal (SR)",region:"asia",difficulty:2},
+  {name:"UAE",flag:"🇦🇪",capital:"Abu Dhabi",currency:"UAE Dirham (AED)",region:"asia",difficulty:2},
+  {name:"Mongolia",flag:"🇲🇳",capital:"Ulaanbaatar",currency:"Mongolian Tögrög (₮)",region:"asia",difficulty:4},
+  {name:"Bhutan",flag:"🇧🇹",capital:"Thimphu",currency:"Bhutanese Ngultrum (Nu)",region:"asia",difficulty:4},
+  // Europe
+  {name:"France",flag:"🇫🇷",capital:"Paris",currency:"Euro (€)",region:"europe",difficulty:1},
+  {name:"Germany",flag:"🇩🇪",capital:"Berlin",currency:"Euro (€)",region:"europe",difficulty:1},
+  {name:"Italy",flag:"🇮🇹",capital:"Rome",currency:"Euro (€)",region:"europe",difficulty:1},
+  {name:"Spain",flag:"🇪🇸",capital:"Madrid",currency:"Euro (€)",region:"europe",difficulty:1},
+  {name:"United Kingdom",flag:"🇬🇧",capital:"London",currency:"British Pound (£)",region:"europe",difficulty:1},
+  {name:"Netherlands",flag:"🇳🇱",capital:"Amsterdam",currency:"Euro (€)",region:"europe",difficulty:2},
+  {name:"Sweden",flag:"🇸🇪",capital:"Stockholm",currency:"Swedish Krona (kr)",region:"europe",difficulty:2},
+  {name:"Poland",flag:"🇵🇱",capital:"Warsaw",currency:"Polish Złoty (zł)",region:"europe",difficulty:2},
+  {name:"Portugal",flag:"🇵🇹",capital:"Lisbon",currency:"Euro (€)",region:"europe",difficulty:2},
+  {name:"Switzerland",flag:"🇨🇭",capital:"Bern",currency:"Swiss Franc (CHF)",region:"europe",difficulty:2},
+  {name:"Norway",flag:"🇳🇴",capital:"Oslo",currency:"Norwegian Krone (kr)",region:"europe",difficulty:3},
+  {name:"Czech Republic",flag:"🇨🇿",capital:"Prague",currency:"Czech Koruna (Kč)",region:"europe",difficulty:3},
+  {name:"Hungary",flag:"🇭🇺",capital:"Budapest",currency:"Hungarian Forint (Ft)",region:"europe",difficulty:3},
+  {name:"Croatia",flag:"🇭🇷",capital:"Zagreb",currency:"Euro (€)",region:"europe",difficulty:3},
+  {name:"Iceland",flag:"🇮🇸",capital:"Reykjavik",currency:"Icelandic Króna (kr)",region:"europe",difficulty:4},
+  {name:"Greece",flag:"🇬🇷",capital:"Athens",currency:"Euro (€)",region:"europe",difficulty:2},
+  {name:"Romania",flag:"🇷🇴",capital:"Bucharest",currency:"Romanian Leu (lei)",region:"europe",difficulty:3},
+  {name:"Austria",flag:"🇦🇹",capital:"Vienna",currency:"Euro (€)",region:"europe",difficulty:2},
+  // Americas
+  {name:"United States",flag:"🇺🇸",capital:"Washington D.C.",currency:"US Dollar ($)",region:"americas",difficulty:1},
+  {name:"Brazil",flag:"🇧🇷",capital:"Brasília",currency:"Brazilian Real (R$)",region:"americas",difficulty:1},
+  {name:"Canada",flag:"🇨🇦",capital:"Ottawa",currency:"Canadian Dollar (CA$)",region:"americas",difficulty:1},
+  {name:"Mexico",flag:"🇲🇽",capital:"Mexico City",currency:"Mexican Peso ($)",region:"americas",difficulty:1},
+  {name:"Argentina",flag:"🇦🇷",capital:"Buenos Aires",currency:"Argentine Peso ($)",region:"americas",difficulty:2},
+  {name:"Colombia",flag:"🇨🇴",capital:"Bogotá",currency:"Colombian Peso ($)",region:"americas",difficulty:2},
+  {name:"Chile",flag:"🇨🇱",capital:"Santiago",currency:"Chilean Peso ($)",region:"americas",difficulty:2},
+  {name:"Peru",flag:"🇵🇪",capital:"Lima",currency:"Peruvian Sol (S/.)",region:"americas",difficulty:2},
+  {name:"Venezuela",flag:"🇻🇪",capital:"Caracas",currency:"Venezuelan Bolívar (Bs.)",region:"americas",difficulty:3},
+  {name:"Cuba",flag:"🇨🇺",capital:"Havana",currency:"Cuban Peso ($MN)",region:"americas",difficulty:3},
+  {name:"Ecuador",flag:"🇪🇨",capital:"Quito",currency:"US Dollar ($)",region:"americas",difficulty:3},
+  {name:"Bolivia",flag:"🇧🇴",capital:"Sucre",currency:"Bolivian Boliviano (Bs.)",region:"americas",difficulty:3},
+  {name:"Paraguay",flag:"🇵🇾",capital:"Asunción",currency:"Paraguayan Guaraní (₲)",region:"americas",difficulty:4},
+  {name:"Uruguay",flag:"🇺🇾",capital:"Montevideo",currency:"Uruguayan Peso ($U)",region:"americas",difficulty:4},
+  {name:"Costa Rica",flag:"🇨🇷",capital:"San José",currency:"Costa Rican Colón (₡)",region:"americas",difficulty:3},
+  {name:"Jamaica",flag:"🇯🇲",capital:"Kingston",currency:"Jamaican Dollar (J$)",region:"americas",difficulty:3},
+  // Oceania
+  {name:"Australia",flag:"🇦🇺",capital:"Canberra",currency:"Australian Dollar (A$)",region:"oceania",difficulty:1},
+  {name:"New Zealand",flag:"🇳🇿",capital:"Wellington",currency:"New Zealand Dollar (NZ$)",region:"oceania",difficulty:1},
+  {name:"Fiji",flag:"🇫🇯",capital:"Suva",currency:"Fijian Dollar (FJ$)",region:"oceania",difficulty:2},
+  {name:"Papua New Guinea",flag:"🇵🇬",capital:"Port Moresby",currency:"Papua New Guinean Kina (K)",region:"oceania",difficulty:3},
+  {name:"Samoa",flag:"🇼🇸",capital:"Apia",currency:"Samoan Tālā (T)",region:"oceania",difficulty:4},
+  {name:"Vanuatu",flag:"🇻🇺",capital:"Port Vila",currency:"Vanuatu Vatu (VT)",region:"oceania",difficulty:5},
+  {name:"Tonga",flag:"🇹🇴",capital:"Nukuʻalofa",currency:"Tongan Paʻanga (T$)",region:"oceania",difficulty:5},
+];
+
+// ===================== STATE =====================
+const DEFAULT_STATE = () => ({
+  region: 'all',
+  difficulty: 'progressive',
+  questions: [],
+  current: 0,
+  score: 0,
+  combo: 0,
+  maxCombo: 0,
+  correct: 0,
+  lives: 3,
+  maxLives: 3,
+  hints: 3,
+  skips: 2,
+  timer: null,
+  timeLeft: 15,
+  answered: false,
+  paused: false,
+  theme: localStorage.getItem('glTheme') || 'dark'
+});
+let state = DEFAULT_STATE();
+
+// ===================== SOUND =====================
+let audioCtx = null;
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function tone(freq, type, dur, vol=0.3, delay=0) {
+  try {
+    const ctx = getAudio();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type; osc.frequency.value = freq;
+    const t = ctx.currentTime + delay;
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.start(t); osc.stop(t + dur);
+  } catch(e){}
+}
+const sfx = {
+  correct: () => { tone(880,'sine',0.15,0.4); tone(1100,'sine',0.15,0.3,0.1); },
+  wrong: () => { tone(200,'sawtooth',0.3,0.35); },
+  combo: () => [600,800,1000].forEach((f,i)=>tone(f,'sine',0.12,0.35,i*0.08)),
+  tick: () => tone(440,'square',0.05,0.09),
+  complete: () => [523,659,784,1047].forEach((f,i)=>tone(f,'sine',0.2,0.3,i*0.12)),
+  skip: () => tone(660,'sine',0.1,0.2),
+  hint: () => { tone(500,'sine',0.08,0.15); tone(700,'sine',0.08,0.15,0.15); },
+  loseLife: () => { tone(300,'sawtooth',0.2,0.4); tone(200,'sawtooth',0.15,0.3,0.2); },
+};
+
+// ===================== UTILS =====================
+function shuffle(arr) { return [...arr].sort(()=>Math.random()-0.5); }
+function $(id) { return document.getElementById(id); }
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+// ===================== THEME =====================
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.theme);
+  localStorage.setItem('glTheme', state.theme);
+}
+$('themeToggle').addEventListener('click', ()=>{
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  applyTheme();
+});
+applyTheme();
+
+// ===================== HIGH SCORE =====================
+function getHS() { return parseInt(localStorage.getItem('glHS') || '0'); }
+function setHS(v) { localStorage.setItem('glHS', v); }
+function updateHSDisplay() { $('hsDisplay').textContent = getHS(); }
+updateHSDisplay();
+
+// ===================== REGION + DIFFICULTY SELECT =====================
+let selectedRegion = 'all';
+let selectedDiff = 'progressive';
+
+document.querySelectorAll('.region-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.region-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedRegion = btn.dataset.region;
+  });
+});
+document.querySelectorAll('.diff-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.diff-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedDiff = btn.dataset.diff;
+  });
+});
+
+// ===================== QUESTION GENERATION =====================
+function getPool() {
+  const base = selectedRegion === 'all' ? COUNTRIES : COUNTRIES.filter(c=>c.region===selectedRegion);
+  return base.length >= 4 ? base : COUNTRIES;
+}
+
+function generateQuestions(pool, count=30) {
+  const diff = selectedDiff;
+  let filtered = [...pool];
+  if (diff === 'easy') filtered = pool.filter(c=>c.difficulty<=2).length>=4 ? pool.filter(c=>c.difficulty<=2) : pool;
+  if (diff === 'hard') filtered = pool.filter(c=>c.difficulty>=3).length>=4 ? pool.filter(c=>c.difficulty>=3) : pool;
+  const sorted = [...filtered].sort((a,b)=>a.difficulty-b.difficulty);
+  const types = ['flag','capital','currency'];
+  const chunks = diff === 'progressive' ? [
+    sorted.filter(c=>c.difficulty<=2),
+    sorted.filter(c=>c.difficulty>=2&&c.difficulty<=3),
+    sorted.filter(c=>c.difficulty>=3),
+  ] : [sorted, sorted, sorted];
+  chunks.forEach((ch,i)=>{ if(ch.length<4) chunks[i]=sorted; });
+
+  const qs = [];
+  for(let i=0;i<count;i++){
+    const chunkIdx = i<10?0:i<20?1:2;
+    const chunk = chunks[chunkIdx];
+    const country = chunk[Math.floor(Math.random()*chunk.length)];
+    const type = types[Math.floor(Math.random()*types.length)];
+    const isTyping = Math.random() < 0.25;
+    const others = shuffle(COUNTRIES.filter(c=>c.name!==country.name)).slice(0,3);
+    const options = shuffle([country,...others]);
+    qs.push({ country, type, isTyping, options });
+  }
+  return qs;
+}
+
+// ===================== LIVES DISPLAY =====================
+function renderLives() {
+  const el = $('livesDisplay');
+  el.innerHTML = '';
+  for(let i=0;i<state.maxLives;i++){
+    const h = document.createElement('span');
+    h.className = 'life-heart' + (i >= state.lives ? ' lost' : '');
+    h.textContent = '❤️';
+    el.appendChild(h);
+  }
+}
+
+// ===================== POWERUP DISPLAYS =====================
+function updatePowerupDisplays() {
+  $('hintCount').textContent = state.hints;
+  $('skipCount').textContent = state.skips;
+  $('skipBadge').textContent = state.skips + ' left';
+  $('hintBtn').disabled = state.hints <= 0 || state.answered;
+  $('skipBtn').disabled = state.skips <= 0 || state.answered;
+  const skipRow = $('skipRow');
+  if(skipRow) skipRow.style.display = state.skips > 0 ? 'flex' : 'none';
+}
+
+// ===================== QUIZ START =====================
+function startQuiz() {
+  const saved = { theme: state.theme };
+  state = DEFAULT_STATE();
+  state.theme = saved.theme;
+  state.region = selectedRegion;
+  state.difficulty = selectedDiff;
+  const pool = getPool();
+  state.questions = generateQuestions(pool, 30);
+  updateHSDisplay();
+  renderLives();
+  updatePowerupDisplays();
+  showScreen('screenQuiz');
+  loadQuestion();
+}
+
+function getTimerForQ(idx, diff) {
+  if(diff==='easy') return 20;
+  if(diff==='hard') return 8;
+  if(idx<10) return 15;
+  if(idx<20) return 12;
+  return 10;
+}
+
+// ===================== LOAD QUESTION =====================
+function loadQuestion() {
+  if(state.current >= state.questions.length){ endQuiz(); return; }
+  state.answered = false;
+  const q = state.questions[state.current];
+  const pct = (state.current / state.questions.length) * 100;
+  $('progressFill').style.width = pct + '%';
+  $('qNumDisplay').textContent = `${state.current+1}/30`;
+  $('scoreDisplay').textContent = state.score;
+  $('comboDisplay').textContent = `x${state.combo}`;
+  updatePowerupDisplays();
+
+  // Question content
+  let display='', typeTag='', qText='';
+  if(q.type==='flag'){
+    display=q.country.flag; typeTag='🚩 Flag';
+    qText=q.isTyping ? `Type the country name for this flag:` : `Which country does this flag belong to?`;
+  } else if(q.type==='capital'){
+    display='🏛️'; typeTag='🏛️ Capital';
+    qText=q.isTyping ? `Type the country whose capital is <strong>${q.country.capital}</strong>` : `Which country has <strong>${q.country.capital}</strong> as its capital?`;
+  } else {
+    display='💰'; typeTag='💰 Currency';
+    qText=q.isTyping ? `Type the country that uses the <strong>${q.country.currency}</strong>` : `Which country uses the <strong>${q.country.currency}</strong>?`;
+  }
+  $('qTypeTag').textContent = typeTag;
+  $('qDisplay').textContent = display;
+  $('qDisplay').style.animation='none';
+  requestAnimationFrame(()=>{ $('qDisplay').style.animation='popIn 0.4s cubic-bezier(0.34,1.56,0.64,1)'; });
+  $('qText').innerHTML = qText;
+  $('hintReveal').textContent=''; $('hintReveal').classList.remove('show');
+
+  // Answers
+  const area=$('answersArea'); area.innerHTML='';
+  if(q.isTyping){
+    area.innerHTML=`
+      <div class="type-input-wrap">
+        <input class="type-input" id="typeInput" type="text" placeholder="Type your answer..." autocomplete="off" spellcheck="false">
+      </div>
+      <button class="submit-btn" id="submitTypeBtn">Submit Answer</button>
+    `;
+    const inp=$('typeInput');
+    inp.focus();
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter') submitTyped(); });
+    $('submitTypeBtn').addEventListener('click',submitTyped);
+  } else {
+    const grid=document.createElement('div');
+    grid.className='options-grid';
+    const letters=['A','B','C','D'];
+    q.options.forEach((opt,i)=>{
+      const btn=document.createElement('button');
+      btn.className='option-btn'; btn.dataset.name=opt.name;
+      btn.innerHTML=`<span class="opt-letter">${letters[i]}</span>${opt.name}`;
+      btn.addEventListener('click',()=>selectOption(btn, opt.name===q.country.name));
+      grid.appendChild(btn);
+    });
+    area.appendChild(grid);
+  }
+
+  // Timer
+  clearInterval(state.timer);
+  state.timeLeft = getTimerForQ(state.current, state.difficulty);
+  $('timerDisplay').textContent = state.timeLeft;
+  $('timerDisplay').className = 'stat-value timer';
+  state.timer = setInterval(()=>{
+    if(state.answered || state.paused) return;
+    state.timeLeft--;
+    $('timerDisplay').textContent = state.timeLeft;
+    if(state.timeLeft<=5) $('timerDisplay').className='stat-value timer urgent';
+    if(state.timeLeft>0 && state.timeLeft<=5) sfx.tick();
+    if(state.timeLeft<=0){ clearInterval(state.timer); timeOut(); }
+  }, 1000);
+}
+
+// ===================== ANSWER HANDLING =====================
+function selectOption(btn, correct) {
+  if(state.answered) return;
+  state.answered=true;
+  clearInterval(state.timer);
+  const allBtns=document.querySelectorAll('.option-btn');
+  allBtns.forEach(b=>{ b.disabled=true; if(b.dataset.name===state.questions[state.current].country.name) b.classList.add('correct'); });
+  if(correct){ btn.classList.add('correct'); handleCorrect(); }
+  else { btn.classList.add('wrong'); handleWrong(); }
+  setTimeout(nextQuestion, 1400);
+}
+
+function submitTyped() {
+  if(state.answered) return;
+  const inp=$('typeInput'); if(!inp) return;
+  const val=inp.value.trim().toLowerCase();
+  const q=state.questions[state.current];
+  const correct=val===q.country.name.toLowerCase()||(q.country.name.toLowerCase().includes(val)&&val.length>3);
+  state.answered=true; clearInterval(state.timer);
+  inp.disabled=true; $('submitTypeBtn').disabled=true;
+  if(correct){ inp.classList.add('correct'); handleCorrect(); }
+  else { inp.classList.add('wrong'); inp.value=q.country.name; handleWrong(); }
+  setTimeout(nextQuestion, 1400);
+}
+
+function handleCorrect() {
+  state.correct++;
+  state.combo++;
+  if(state.combo>state.maxCombo) state.maxCombo=state.combo;
+  const timeBonus=state.timeLeft*2;
+  const comboBonus=state.combo>=3?state.combo*5:0;
+  const pts=10+timeBonus+comboBonus;
+  state.score+=pts;
+  $('scoreDisplay').textContent=state.score;
+  $('comboDisplay').textContent=`x${state.combo}`;
+  sfx.correct();
+  showFeedback('✅');
+  if(state.combo>=3){ showComboToast(`🔥 Combo x${state.combo}! +${comboBonus}pts`); sfx.combo(); }
+}
+
+function handleWrong(isTimeout=false) {
+  state.combo=0;
+  $('comboDisplay').textContent='x0';
+  if(!isTimeout) sfx.wrong();
+  showFeedback(isTimeout?'⏰':'❌');
+  $('questionCard').style.animation='none';
+  requestAnimationFrame(()=>{ $('questionCard').style.animation='shake 0.4s ease'; });
+  // lose a life
+  state.lives--;
+  renderLives();
+  if(state.lives>0) {
+    sfx.loseLife();
+    // flash the hearts
+    const hearts=$('livesDisplay').querySelectorAll('.life-heart');
+    const lostHeart=hearts[state.lives];
+    if(lostHeart){ lostHeart.style.animation='heartShake 0.4s ease'; setTimeout(()=>lostHeart.style.animation='',400); }
+  }
+}
+
+function timeOut() {
+  if(state.answered) return;
+  state.answered=true;
+  handleWrong(true);
+  const q=state.questions[state.current];
+  document.querySelectorAll('.option-btn').forEach(b=>{ b.disabled=true; if(b.dataset.name===q.country.name) b.classList.add('correct'); });
+  const inp=$('typeInput');
+  if(inp){ inp.disabled=true; inp.value=q.country.name; inp.classList.add('wrong'); }
+  setTimeout(()=>{
+    if(state.lives<=0){ endQuizEarly(); } else { nextQuestion(); }
+  }, 1400);
+}
+
+function nextQuestion() {
+  if(state.lives<=0){ endQuizEarly(); return; }
+  state.current++;
+  loadQuestion();
+}
+
+// ===================== HINT =====================
+$('hintBtn').addEventListener('click', useHint);
+function useHint() {
+  if(state.hints<=0||state.answered) return;
+  const q=state.questions[state.current];
+  state.hints--;
+  updatePowerupDisplays();
+  sfx.hint();
+  if(q.isTyping){
+    // Show first 2 letters as hint
+    const hint=q.country.name.slice(0,2)+'...';
+    $('hintReveal').textContent=`💡 Hint: starts with "${hint}"`;
+    $('hintReveal').classList.add('show');
+  } else {
+    // Eliminate one wrong answer
+    const btns=[...$('answersArea').querySelectorAll('.option-btn')];
+    const wrongBtns=btns.filter(b=>b.dataset.name!==q.country.name&&!b.classList.contains('eliminated')&&!b.disabled);
+    if(wrongBtns.length>0){
+      const toElim=wrongBtns[Math.floor(Math.random()*wrongBtns.length)];
+      toElim.classList.add('eliminated'); toElim.disabled=true;
+      $('hintReveal').textContent=`💡 One wrong answer eliminated!`;
+      $('hintReveal').classList.add('show');
+    }
+  }
+}
+
+// ===================== SKIP =====================
+$('skipBtn').addEventListener('click', useSkip);
+$('skipLink').addEventListener('click', useSkip);
+function useSkip() {
+  if(state.skips<=0||state.answered) return;
+  state.skips--;
+  clearInterval(state.timer);
+  state.answered=true;
+  sfx.skip();
+  showFeedback('⏭');
+  state.combo=0;
+  $('comboDisplay').textContent='x0';
+  setTimeout(()=>{ state.current++; loadQuestion(); }, 800);
+}
+
+// ===================== PAUSE =====================
+$('pauseBtn').addEventListener('click', togglePause);
+function togglePause() {
+  if(!state.paused){ pauseQuiz(); } else { resumeQuiz(); }
+}
+function pauseQuiz() {
+  state.paused=true;
+  $('pauseScore').textContent=state.score;
+  $('pauseQ').textContent=`${state.current+1}/30`;
+  const livesStr=['','❤️','❤️❤️','❤️❤️❤️'][state.lives]||'';
+  $('pauseLives').textContent=livesStr||'💀';
+  $('pauseOverlay').classList.add('show');
+}
+function resumeQuiz() {
+  state.paused=false;
+  $('pauseOverlay').classList.remove('show');
+}
+$('pauseResumeBtn').addEventListener('click', resumeQuiz);
+$('pauseRestartBtn').addEventListener('click', ()=>{
+  $('pauseOverlay').classList.remove('show');
+  state.paused=false;
+  startQuiz();
+});
+$('pauseQuitBtn').addEventListener('click', ()=>{
+  clearInterval(state.timer);
+  $('pauseOverlay').classList.remove('show');
+  state.paused=false;
+  showScreen('screenWelcome');
+});
+$('quitBtnQuiz').addEventListener('click', ()=>{
+  clearInterval(state.timer);
+  showScreen('screenWelcome');
+});
+
+// ===================== FEEDBACK =====================
+function showFeedback(icon) {
+  $('feedbackIcon').textContent=icon;
+  $('feedbackOverlay').classList.add('show');
+  setTimeout(()=>$('feedbackOverlay').classList.remove('show'), 550);
+}
+function showComboToast(msg) {
+  $('comboToast').textContent=msg;
+  $('comboToast').classList.add('show');
+  setTimeout(()=>$('comboToast').classList.remove('show'), 1600);
+}
+
+// ===================== END QUIZ =====================
+function endQuizEarly() {
+  clearInterval(state.timer);
+  $('resultsTitle').textContent='Out of Lives!';
+  $('resultsSubtitle').textContent='No lives left — better luck next time';
+  finishResults();
+}
+function endQuiz() {
+  clearInterval(state.timer);
+  $('resultsTitle').textContent='Quiz Complete!';
+  $('resultsSubtitle').textContent='Here\'s how you did';
+  sfx.complete();
+  finishResults();
+}
+function finishResults() {
+  const accuracy=Math.round((state.correct/state.questions.length)*100);
+  const pct=state.correct/state.questions.length;
+  let rating='';
+  if(pct<=0.4) rating='🌱 Beginner';
+  else if(pct<=0.7) rating='🗺️ Explorer';
+  else if(pct<=0.9) rating='🌍 Geographer';
+  else rating='🏆 GeoMaster';
+
+  $('finalScore').textContent=state.score;
+  $('finalTotal').textContent=`${state.correct}/${state.questions.length} correct`;
+  $('ratingBadge').textContent=rating;
+  $('resCorrect').textContent=state.correct;
+  $('resAccuracy').textContent=accuracy+'%';
+  $('resMaxCombo').textContent='x'+state.maxCombo;
+
+  const hs=getHS();
+  if(state.score>hs){ setHS(state.score); $('newRecordBadge').style.display='block'; updateHSDisplay(); spawnConfetti(); }
+  else { $('newRecordBadge').style.display='none'; }
+
+  const shareStr=`🌍 GeoLevels | Score: ${state.score}pts | ${state.correct}/${state.questions.length} correct | ${accuracy}% accuracy | ${rating} | Max Combo: x${state.maxCombo}`;
+  $('shareText').textContent=`📋 ${shareStr}`;
+  $('shareBox').onclick=()=>{
+    navigator.clipboard.writeText(shareStr).then(()=>{
+      $('shareText').textContent='✅ Copied to clipboard!';
+      setTimeout(()=>$('shareText').textContent=`📋 ${shareStr}`,2500);
+    });
+  };
+  showScreen('screenResults');
+}
+
+// ===================== CONFETTI =====================
+function spawnConfetti() {
+  const colors=['#00e5a0','#7c6aff','#ff4f6a','#ffb800','#ff7c2a','#ffffff'];
+  for(let i=0;i<70;i++){
+    const el=document.createElement('div');
+    el.className='confetti-piece';
+    el.style.cssText=`left:${Math.random()*100}vw;top:-10px;background:${colors[Math.floor(Math.random()*colors.length)]};animation-duration:${1.5+Math.random()*2.5}s;animation-delay:${Math.random()*0.6}s;width:${5+Math.random()*9}px;height:${5+Math.random()*9}px;border-radius:${Math.random()>0.5?'50%':'2px'};`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),4000);
+  }
+}
+
+// ===================== NAV BUTTONS =====================
+$('startBtn').addEventListener('click', startQuiz);
+$('playAgainBtn').addEventListener('click', startQuiz);
+$('changeRegionBtn').addEventListener('click', ()=>showScreen('screenWelcome'));
+</script>
+</body>
+</html>
