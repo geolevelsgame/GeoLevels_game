@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -30,5 +31,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+const GEO_HTML = path.resolve(process.cwd(), "../../GeoLevels.html");
+
+app.get(["/", "/GeoLevels.html"], (_req, res) => {
+  res.sendFile(GEO_HTML);
+});
 
 export default app;
