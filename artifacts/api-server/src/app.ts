@@ -32,7 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
-const GEO_HTML = path.resolve(process.cwd(), "../../GeoLevels.html");
+const GEO_HTML = path.resolve(process.cwd(), "GeoLevels.html");
 
 app.get(["/", "/GeoLevels.html"], (_req, res) => {
   res.sendFile(GEO_HTML);
