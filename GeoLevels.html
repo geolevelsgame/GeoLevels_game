@@ -1193,7 +1193,7 @@ function buildShareText() {
   const pct=G.correct/G.questions.length;
   const rating=pct<=0.4?'🌱 Beginner':pct<=0.7?'🗺️ Explorer':pct<=0.9?'🌍 Geographer':'🏆 GeoMaster';
   const prefix=G.isDaily?`📅 GeoLevels Daily Challenge (${new Date().toLocaleDateString()})\n`:'🌍 GeoLevels Quiz Result\n';
-  return `${prefix}Score: ${G.score} pts | ${G.correct}/${G.questions.length} correct | Accuracy: ${accuracy}% | ${rating} | Max Combo: x${G.maxCombo}\n\nCan you beat my score? Play at geolevelsgame.com 🎮\n#GeoLevels #Geography #QuizChallenge`;
+  return `${prefix}Score: ${G.score} pts | ${G.correct}/${G.questions.length} correct | Accuracy: ${accuracy}% | ${rating} | Max Combo: x${G.maxCombo}\n\nCan you beat my score? Play at https://geolevelsgame.github.io/GeoLevels_game/GeoLevels.html 🎮\n#GeoLevels #Geography #QuizChallenge`;
 }
 
 function setShareFeedback(msg, dur=2500) {
