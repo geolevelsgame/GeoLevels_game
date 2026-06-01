@@ -640,7 +640,7 @@ html, body { height:100%; font-family:'DM Sans',sans-serif; background:var(--bg)
   </div>
 </div>
 
-<script>
+<script type="module">
 // ========================= DATA =========================
 const COUNTRIES = [
   {name:"Nigeria",flag:"🇳🇬",capital:"Abuja",currency:"Naira (₦)",region:"africa",difficulty:1},
@@ -1330,21 +1330,38 @@ function spawnConfetti() {
   }
 }
 
-// ========================= LEADERBOARD =========================
-const API = '/api';
+// ========================= FIREBASE LEADERBOARD =========================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, query, where, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDXeAYSCrPXzG7QJupALcKTcDdDD-56ssc",
+  authDomain: "geolevelsgame.firebaseapp.com",
+  projectId: "geolevelsgame",
+  storageBucket: "geolevelsgame.firebasestorage.app",
+  messagingSenderId: "121527919109",
+  appId: "1:121527919109:web:89286024edb5db7658726c"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
 let lbSubmitted = false;
 
 async function fetchLeaderboard() {
   const el=$('lbList'); el.innerHTML='<div class="lb-loading">Loading scores…</div>';
   $('lbMode').textContent = G.isDaily ? `Daily · ${new Date().toLocaleDateString()}` : `${G.region==='all'?'Global':G.region.charAt(0).toUpperCase()+G.region.slice(1)}`;
   try {
-    const params = G.isDaily
-      ? `mode=daily&daily_date=${new Date().toISOString().slice(0,10)}`
-      : `mode=classic&region=${G.region}`;
-    const res = await fetch(`${API}/leaderboard?${params}`);
-    if(!res.ok) throw new Error('fetch failed');
-    const data = await res.json();
-    renderLeaderboard(data.entries || []);
+    const col = collection(db, 'leaderboard');
+    let q;
+    if(G.isDaily) {
+      q = query(col, where('mode','==','daily'), where('dailyDate','==',new Date().toISOString().slice(0,10)), orderBy('score','desc'), limit(20));
+    } else {
+      q = query(col, where('mode','==','classic'), where('region','==',G.region), orderBy('score','desc'), limit(20));
+    }
+    const snap = await getDocs(q);
+    const entries = snap.docs.map(d=>d.data());
+    renderLeaderboard(entries);
+    renderLeaderboard(entries);
   } catch(e) {
     el.innerHTML='<div class="lb-empty">Could not load scores right now.</div>';
   }
@@ -1371,7 +1388,7 @@ function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace
 
 async function submitScore(name) {
   try {
-    const body = {
+    await addDoc(collection(db, 'leaderboard'), {
       playerName: name,
       score: G.score,
       correct: G.correct,
@@ -1380,9 +1397,8 @@ async function submitScore(name) {
       region: G.region,
       mode: G.isDaily ? 'daily' : 'classic',
       dailyDate: G.isDaily ? new Date().toISOString().slice(0,10) : null,
-    };
-    const res = await fetch(`${API}/leaderboard`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-    if(!res.ok) throw new Error('submit failed');
+      createdAt: serverTimestamp(),
+    });
     lbSubmitted=true;
     localStorage.setItem('gl_playerName', name);
     $('lbSubmitRow').style.display='none';
