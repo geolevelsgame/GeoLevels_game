@@ -312,7 +312,22 @@ html, body { height:100%; font-family:'DM Sans',sans-serif; background:var(--bg)
 @keyframes cardSlideIn { 0%{transform:translateY(18px);opacity:0} 100%{transform:translateY(0);opacity:1} }
 @keyframes correctPulse { 0%{box-shadow:0 0 0 0 rgba(0,229,160,0.5)} 70%{box-shadow:0 0 0 10px rgba(0,229,160,0)} 100%{box-shadow:0 0 0 0 rgba(0,229,160,0)} }
 .option-btn.correct { animation:correctPulse 0.5s ease; }
-/* Currency symbol display */
+/* DAILY YT HINT */
+.mode-yt-hint { font-size:0.62rem; color:#ff0000; font-weight:600; margin-top:4px; opacity:0.85; }
+
+/* YOUTUBE CTA */
+.yt-cta { background:linear-gradient(135deg,rgba(255,0,0,0.08),rgba(255,0,0,0.04)); border:1px solid rgba(255,0,0,0.2); border-radius:var(--radius-sm); padding:14px 16px; margin-top:10px; }
+.yt-cta-inner { display:flex; align-items:center; gap:12px; }
+.yt-cta-icon { width:36px; height:36px; background:#ff0000; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:1rem; flex-shrink:0; }
+.yt-cta-text { flex:1; }
+.yt-cta-title { font-family:'Syne',sans-serif; font-weight:700; font-size:0.88rem; color:var(--text); }
+.yt-cta-sub { font-size:0.72rem; color:var(--text-muted); margin-top:2px; }
+.yt-cta-btn { background:#ff0000; color:#fff; font-family:'Syne',sans-serif; font-weight:700; font-size:0.75rem; padding:8px 14px; border-radius:6px; text-decoration:none; letter-spacing:0.5px; text-transform:uppercase; white-space:nowrap; transition:all 0.2s; }
+.yt-cta-btn:hover { background:#cc0000; transform:translateY(-1px); }
+.yt-cta-pack { margin-top:10px; font-size:0.78rem; color:var(--text-muted); padding-top:10px; border-top:1px solid rgba(255,0,0,0.1); }
+.yt-cta-pack strong { color:var(--accent2); }
+
+/* CURRENCY SYMBOL */
 .currency-display { font-family:'Syne',sans-serif; font-weight:800; font-size:clamp(2.8rem,11vw,4.2rem); color:var(--accent); display:block; letter-spacing:-1px; line-height:1; }
 .s1{animation:slideUp .5s ease forwards} .s2{animation:slideUp .5s .08s ease forwards;opacity:0} .s3{animation:slideUp .5s .16s ease forwards;opacity:0} .s4{animation:slideUp .5s .24s ease forwards;opacity:0} .s5{animation:slideUp .5s .32s ease forwards;opacity:0} .s6{animation:slideUp .5s .4s ease forwards;opacity:0}
 .confetti-piece { position:fixed; border-radius:2px; pointer-events:none; z-index:600; animation:confettiFall linear forwards; }
@@ -535,6 +550,7 @@ html, body { height:100%; font-family:'DM Sans',sans-serif; background:var(--bg)
         <span class="mode-icon">📅</span>
         <div class="mode-name">Daily Challenge</div>
         <div class="mode-sub" id="dailySub">Same questions for everyone today</div>
+        <div class="mode-yt-hint" id="dailyYtHint">▶ Watch today's video for the reveal</div>
       </div>
     </div>
 
@@ -644,6 +660,21 @@ html, body { height:100%; font-family:'DM Sans',sans-serif; background:var(--bg)
       <div class="results-btns s6">
         <button class="btn-primary" id="playAgainBtn">Play Again</button>
         <button class="btn-secondary" id="changeRegionBtn">Change Region</button>
+      </div>
+
+      <!-- YOUTUBE CTA -->
+      <div class="yt-cta s6" id="ytCta">
+        <div class="yt-cta-inner">
+          <div class="yt-cta-icon">▶</div>
+          <div class="yt-cta-text">
+            <div class="yt-cta-title" id="ytCtaTitle">Watch the answer breakdown</div>
+            <div class="yt-cta-sub">GeoLevels on YouTube</div>
+          </div>
+          <a class="yt-cta-btn" id="ytCtaBtn" href="https://www.youtube.com/@GeoLevels_yt" target="_blank" rel="noopener">Watch →</a>
+        </div>
+        <div class="yt-cta-pack" id="ytCtaPack" style="display:none">
+          🔒 <strong id="ytCtaPackName">Africa Expert Pack</strong> — watch the Africa series to unlock it
+        </div>
       </div>
     </div>
   </div>
@@ -1326,7 +1357,7 @@ function buildShareText() {
   const pct=G.correct/G.questions.length;
   const rating=pct<=0.4?'🌱 Beginner':pct<=0.7?'🗺️ Explorer':pct<=0.9?'🌍 Geographer':'🏆 GeoMaster';
   const prefix=G.isDaily?`📅 GeoLevels Daily Challenge (${new Date().toLocaleDateString()})\n`:'🌍 GeoLevels Quiz Result\n';
-  return `${prefix}Score: ${G.score} pts | ${G.correct}/${G.questions.length} correct | Accuracy: ${accuracy}% | ${rating} | Max Combo: x${G.maxCombo}\n\nCan you beat my score? Play at https://geolevelsgame.github.io/GeoLevels_game/GeoLevels.html 🎮\n#GeoLevels #Geography #QuizChallenge`;
+  return `${prefix}Score: ${G.score} pts | ${G.correct}/${G.questions.length} correct | Accuracy: ${accuracy}% | ${rating} | Max Combo: x${G.maxCombo}\n\nCan you beat my score? Play at https://geolevelsgame.github.io/GeoLevels_game/GeoLevels.html 🎮\nSubscribe for new packs → youtube.com/@GeoLevels_yt\n#GeoLevels #Geography #QuizChallenge`;
 }
 
 function setShareFeedback(msg, dur=2500) {
@@ -1430,7 +1461,13 @@ function generateScoreCard() {
   ctx.fillStyle=c.accent; ctx.globalAlpha=0.9;
   roundRect(ctx,0,H-48,W,48,{tl:0,tr:0,bl:0,br:0}); ctx.fill(); ctx.globalAlpha=1;
   ctx.font='bold 16px Syne, sans-serif'; ctx.fillStyle='#000';
-  ctx.fillText('🌍  GeoLevels  —  How well do you know the world?', 30, H-18);
+  ctx.fillText('🌍  GeoLevels  —  youtube.com/@GeoLevels_yt', 30, H-18);
+
+  // Channel watermark top-right
+  ctx.font='bold 13px Syne, sans-serif'; ctx.fillStyle=c.accent; ctx.globalAlpha=0.7;
+  ctx.textAlign='right';
+  ctx.fillText('@GeoLevels_yt', W-30, 50);
+  ctx.globalAlpha=1; ctx.textAlign='left';
 
   // Trigger download
   canvas.toBlob(blob=>{
@@ -1580,7 +1617,26 @@ function finishResults() {
     const streak=updateStreak(); refreshStreakDisplay();
     $('dailyBanner').classList.add('show');
     $('dailyBanner').textContent=`📅 Daily Challenge Complete! 🔥 ${streak} day streak. Come back tomorrow!`;
-  } else { $('dailyBanner').classList.remove('show'); }
+    // Daily CTA — send them to YouTube for the answer reveal
+    $('ytCtaTitle').textContent='Watch the answer reveal on YouTube';
+    $('ytCtaBtn').href='https://www.youtube.com/@GeoLevels_yt';
+    $('ytCtaPack').style.display='none';
+  } else {
+    $('dailyBanner').classList.remove('show');
+    // Classic CTA — region-specific pack tease
+    const packNames={
+      africa:'Africa Expert Pack',
+      asia:'Asia Expert Pack',
+      europe:'Europe Expert Pack',
+      americas:'Americas Expert Pack',
+      oceania:'Oceania Expert Pack',
+      all:'World Master Pack'
+    };
+    $('ytCtaTitle').textContent='Subscribe for new question packs every week';
+    $('ytCtaBtn').href='https://www.youtube.com/@GeoLevels_yt';
+    $('ytCtaPackName').textContent=packNames[G.region]||'Expert Pack';
+    $('ytCtaPack').style.display='block';
+  }
   // Reset leaderboard submit state
   lbSubmitted=false;
   $('lbSubmitRow').style.display='';
