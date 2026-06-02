@@ -210,6 +210,9 @@ html, body { height:100%; font-family:'DM Sans',sans-serif; background:var(--bg)
 .q-text strong { color:var(--text); font-weight:600; }
 .hint-reveal { margin-top:11px; padding:9px 14px; background:rgba(255,184,0,0.08); border:1px solid rgba(255,184,0,0.2); border-radius:var(--radius-xs); font-size:0.8rem; color:var(--warning); display:none; animation:fadeIn 0.3s ease; }
 .hint-reveal.show { display:block; }
+.fact-reveal { margin-top:8px; padding:9px 14px; background:rgba(124,106,255,0.07); border:1px solid rgba(124,106,255,0.18); border-radius:var(--radius-xs); font-size:0.78rem; color:var(--text-muted); display:none; animation:fadeIn 0.35s ease; text-align:left; line-height:1.5; }
+.fact-reveal.show { display:block; }
+.fact-reveal strong { color:var(--accent2); }
 .options-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:12px; }
 .option-btn { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 13px; cursor:pointer; transition:all 0.15s; font-family:'DM Sans',sans-serif; font-size:0.88rem; color:var(--text); text-align:left; display:flex; align-items:center; gap:9px; }
 .option-btn:hover:not(:disabled) { border-color:var(--accent2); background:var(--surface2); transform:translateY(-1px); box-shadow:0 0 0 2px var(--glow2); }
@@ -583,6 +586,7 @@ html, body { height:100%; font-family:'DM Sans',sans-serif; background:var(--bg)
         <span class="q-display" id="qDisplay">🏳️</span>
         <div class="q-text" id="qText">Loading...</div>
         <div class="hint-reveal" id="hintReveal"></div>
+        <div class="fact-reveal" id="factReveal"></div>
       </div>
       <div id="answersArea"></div>
       <div class="skip-row" id="skipRow">
@@ -647,84 +651,117 @@ html, body { height:100%; font-family:'DM Sans',sans-serif; background:var(--bg)
 
 <script type="module">
 // ========================= DATA =========================
+// currencyLabel = shown in question (no country name leaked), fact = shown after answer
 const COUNTRIES = [
-  {name:"Nigeria",flag:"🇳🇬",capital:"Abuja",currency:"Naira (₦)",region:"africa",difficulty:1},
-  {name:"Egypt",flag:"🇪🇬",capital:"Cairo",currency:"Egyptian Pound (£E)",region:"africa",difficulty:1},
-  {name:"South Africa",flag:"🇿🇦",capital:"Pretoria",currency:"Rand (R)",region:"africa",difficulty:1},
-  {name:"Kenya",flag:"🇰🇪",capital:"Nairobi",currency:"Kenyan Shilling (KSh)",region:"africa",difficulty:1},
-  {name:"Ghana",flag:"🇬🇭",capital:"Accra",currency:"Ghanaian Cedi (₵)",region:"africa",difficulty:2},
-  {name:"Ethiopia",flag:"🇪🇹",capital:"Addis Ababa",currency:"Ethiopian Birr (Br)",region:"africa",difficulty:2},
-  {name:"Tanzania",flag:"🇹🇿",capital:"Dodoma",currency:"Tanzanian Shilling (TSh)",region:"africa",difficulty:2},
-  {name:"Morocco",flag:"🇲🇦",capital:"Rabat",currency:"Moroccan Dirham (MAD)",region:"africa",difficulty:2},
-  {name:"Senegal",flag:"🇸🇳",capital:"Dakar",currency:"West African CFA Franc",region:"africa",difficulty:3},
-  {name:"Zimbabwe",flag:"🇿🇼",capital:"Harare",currency:"Zimbabwean Dollar (ZWL)",region:"africa",difficulty:3},
-  {name:"Uganda",flag:"🇺🇬",capital:"Kampala",currency:"Ugandan Shilling (USh)",region:"africa",difficulty:3},
-  {name:"Cameroon",flag:"🇨🇲",capital:"Yaoundé",currency:"Central African CFA Franc",region:"africa",difficulty:3},
-  {name:"Mozambique",flag:"🇲🇿",capital:"Maputo",currency:"Mozambican Metical (MT)",region:"africa",difficulty:4},
-  {name:"Botswana",flag:"🇧🇼",capital:"Gaborone",currency:"Botswana Pula (P)",region:"africa",difficulty:4},
-  {name:"Namibia",flag:"🇳🇦",capital:"Windhoek",currency:"Namibian Dollar (N$)",region:"africa",difficulty:4},
-  {name:"Rwanda",flag:"🇷🇼",capital:"Kigali",currency:"Rwandan Franc (RF)",region:"africa",difficulty:4},
-  {name:"Ivory Coast",flag:"🇨🇮",capital:"Yamoussoukro",currency:"West African CFA Franc",region:"africa",difficulty:4},
-  {name:"Zambia",flag:"🇿🇲",capital:"Lusaka",currency:"Zambian Kwacha (ZK)",region:"africa",difficulty:4},
-  {name:"Japan",flag:"🇯🇵",capital:"Tokyo",currency:"Japanese Yen (¥)",region:"asia",difficulty:1},
-  {name:"China",flag:"🇨🇳",capital:"Beijing",currency:"Chinese Yuan (¥)",region:"asia",difficulty:1},
-  {name:"India",flag:"🇮🇳",capital:"New Delhi",currency:"Indian Rupee (₹)",region:"asia",difficulty:1},
-  {name:"South Korea",flag:"🇰🇷",capital:"Seoul",currency:"South Korean Won (₩)",region:"asia",difficulty:1},
-  {name:"Indonesia",flag:"🇮🇩",capital:"Jakarta",currency:"Indonesian Rupiah (Rp)",region:"asia",difficulty:2},
-  {name:"Thailand",flag:"🇹🇭",capital:"Bangkok",currency:"Thai Baht (฿)",region:"asia",difficulty:2},
-  {name:"Vietnam",flag:"🇻🇳",capital:"Hanoi",currency:"Vietnamese Dong (₫)",region:"asia",difficulty:2},
-  {name:"Pakistan",flag:"🇵🇰",capital:"Islamabad",currency:"Pakistani Rupee (₨)",region:"asia",difficulty:2},
-  {name:"Malaysia",flag:"🇲🇾",capital:"Kuala Lumpur",currency:"Malaysian Ringgit (RM)",region:"asia",difficulty:2},
-  {name:"Philippines",flag:"🇵🇭",capital:"Manila",currency:"Philippine Peso (₱)",region:"asia",difficulty:2},
-  {name:"Saudi Arabia",flag:"🇸🇦",capital:"Riyadh",currency:"Saudi Riyal (SR)",region:"asia",difficulty:2},
-  {name:"UAE",flag:"🇦🇪",capital:"Abu Dhabi",currency:"UAE Dirham (AED)",region:"asia",difficulty:2},
-  {name:"Bangladesh",flag:"🇧🇩",capital:"Dhaka",currency:"Bangladeshi Taka (৳)",region:"asia",difficulty:3},
-  {name:"Myanmar",flag:"🇲🇲",capital:"Naypyidaw",currency:"Myanmar Kyat (K)",region:"asia",difficulty:3},
-  {name:"Sri Lanka",flag:"🇱🇰",capital:"Sri Jayawardenepura Kotte",currency:"Sri Lankan Rupee (Rs)",region:"asia",difficulty:3},
-  {name:"Nepal",flag:"🇳🇵",capital:"Kathmandu",currency:"Nepalese Rupee (Rs)",region:"asia",difficulty:3},
-  {name:"Mongolia",flag:"🇲🇳",capital:"Ulaanbaatar",currency:"Mongolian Tögrög (₮)",region:"asia",difficulty:4},
-  {name:"Bhutan",flag:"🇧🇹",capital:"Thimphu",currency:"Bhutanese Ngultrum (Nu)",region:"asia",difficulty:4},
-  {name:"France",flag:"🇫🇷",capital:"Paris",currency:"Euro (€)",region:"europe",difficulty:1},
-  {name:"Germany",flag:"🇩🇪",capital:"Berlin",currency:"Euro (€)",region:"europe",difficulty:1},
-  {name:"Italy",flag:"🇮🇹",capital:"Rome",currency:"Euro (€)",region:"europe",difficulty:1},
-  {name:"Spain",flag:"🇪🇸",capital:"Madrid",currency:"Euro (€)",region:"europe",difficulty:1},
-  {name:"United Kingdom",flag:"🇬🇧",capital:"London",currency:"British Pound (£)",region:"europe",difficulty:1},
-  {name:"Netherlands",flag:"🇳🇱",capital:"Amsterdam",currency:"Euro (€)",region:"europe",difficulty:2},
-  {name:"Sweden",flag:"🇸🇪",capital:"Stockholm",currency:"Swedish Krona (kr)",region:"europe",difficulty:2},
-  {name:"Poland",flag:"🇵🇱",capital:"Warsaw",currency:"Polish Złoty (zł)",region:"europe",difficulty:2},
-  {name:"Portugal",flag:"🇵🇹",capital:"Lisbon",currency:"Euro (€)",region:"europe",difficulty:2},
-  {name:"Switzerland",flag:"🇨🇭",capital:"Bern",currency:"Swiss Franc (CHF)",region:"europe",difficulty:2},
-  {name:"Greece",flag:"🇬🇷",capital:"Athens",currency:"Euro (€)",region:"europe",difficulty:2},
-  {name:"Austria",flag:"🇦🇹",capital:"Vienna",currency:"Euro (€)",region:"europe",difficulty:2},
-  {name:"Norway",flag:"🇳🇴",capital:"Oslo",currency:"Norwegian Krone (kr)",region:"europe",difficulty:3},
-  {name:"Czech Republic",flag:"🇨🇿",capital:"Prague",currency:"Czech Koruna (Kč)",region:"europe",difficulty:3},
-  {name:"Hungary",flag:"🇭🇺",capital:"Budapest",currency:"Hungarian Forint (Ft)",region:"europe",difficulty:3},
-  {name:"Croatia",flag:"🇭🇷",capital:"Zagreb",currency:"Euro (€)",region:"europe",difficulty:3},
-  {name:"Romania",flag:"🇷🇴",capital:"Bucharest",currency:"Romanian Leu (lei)",region:"europe",difficulty:3},
-  {name:"Iceland",flag:"🇮🇸",capital:"Reykjavik",currency:"Icelandic Króna (kr)",region:"europe",difficulty:4},
-  {name:"United States",flag:"🇺🇸",capital:"Washington D.C.",currency:"US Dollar ($)",region:"americas",difficulty:1},
-  {name:"Brazil",flag:"🇧🇷",capital:"Brasília",currency:"Brazilian Real (R$)",region:"americas",difficulty:1},
-  {name:"Canada",flag:"🇨🇦",capital:"Ottawa",currency:"Canadian Dollar (CA$)",region:"americas",difficulty:1},
-  {name:"Mexico",flag:"🇲🇽",capital:"Mexico City",currency:"Mexican Peso ($)",region:"americas",difficulty:1},
-  {name:"Argentina",flag:"🇦🇷",capital:"Buenos Aires",currency:"Argentine Peso ($)",region:"americas",difficulty:2},
-  {name:"Colombia",flag:"🇨🇴",capital:"Bogotá",currency:"Colombian Peso ($)",region:"americas",difficulty:2},
-  {name:"Chile",flag:"🇨🇱",capital:"Santiago",currency:"Chilean Peso ($)",region:"americas",difficulty:2},
-  {name:"Peru",flag:"🇵🇪",capital:"Lima",currency:"Peruvian Sol (S/.)",region:"americas",difficulty:2},
-  {name:"Venezuela",flag:"🇻🇪",capital:"Caracas",currency:"Venezuelan Bolívar (Bs.)",region:"americas",difficulty:3},
-  {name:"Cuba",flag:"🇨🇺",capital:"Havana",currency:"Cuban Peso ($MN)",region:"americas",difficulty:3},
-  {name:"Ecuador",flag:"🇪🇨",capital:"Quito",currency:"US Dollar ($)",region:"americas",difficulty:3},
-  {name:"Bolivia",flag:"🇧🇴",capital:"Sucre",currency:"Bolivian Boliviano (Bs.)",region:"americas",difficulty:3},
-  {name:"Costa Rica",flag:"🇨🇷",capital:"San José",currency:"Costa Rican Colón (₡)",region:"americas",difficulty:3},
-  {name:"Jamaica",flag:"🇯🇲",capital:"Kingston",currency:"Jamaican Dollar (J$)",region:"americas",difficulty:3},
-  {name:"Paraguay",flag:"🇵🇾",capital:"Asunción",currency:"Paraguayan Guaraní (₲)",region:"americas",difficulty:4},
-  {name:"Uruguay",flag:"🇺🇾",capital:"Montevideo",currency:"Uruguayan Peso ($U)",region:"americas",difficulty:4},
-  {name:"Australia",flag:"🇦🇺",capital:"Canberra",currency:"Australian Dollar (A$)",region:"oceania",difficulty:1},
-  {name:"New Zealand",flag:"🇳🇿",capital:"Wellington",currency:"New Zealand Dollar (NZ$)",region:"oceania",difficulty:1},
-  {name:"Fiji",flag:"🇫🇯",capital:"Suva",currency:"Fijian Dollar (FJ$)",region:"oceania",difficulty:2},
-  {name:"Papua New Guinea",flag:"🇵🇬",capital:"Port Moresby",currency:"Papua New Guinean Kina (K)",region:"oceania",difficulty:3},
-  {name:"Samoa",flag:"🇼🇸",capital:"Apia",currency:"Samoan Tālā (T)",region:"oceania",difficulty:4},
-  {name:"Vanuatu",flag:"🇻🇺",capital:"Port Vila",currency:"Vanuatu Vatu (VT)",region:"oceania",difficulty:5},
-  {name:"Tonga",flag:"🇹🇴",capital:"Nukuʻalofa",currency:"Tongan Paʻanga (T$)",region:"oceania",difficulty:5},
+  // AFRICA
+  {name:"Nigeria",flag:"🇳🇬",capital:"Abuja",currency:"Naira (₦)",currencyLabel:"Naira",region:"africa",difficulty:1,fact:"Nigeria is the most populous country in Africa with over 220 million people."},
+  {name:"Egypt",flag:"🇪🇬",capital:"Cairo",currency:"Egyptian Pound (£E)",currencyLabel:"Egyptian Pound",region:"africa",difficulty:1,fact:"Egypt is home to the Great Pyramid of Giza, the oldest of the Seven Wonders of the Ancient World."},
+  {name:"South Africa",flag:"🇿🇦",capital:"Pretoria",currency:"Rand (R)",currencyLabel:"Rand",region:"africa",difficulty:1,fact:"South Africa has 3 capital cities — Pretoria, Cape Town, and Bloemfontein."},
+  {name:"Kenya",flag:"🇰🇪",capital:"Nairobi",currency:"Kenyan Shilling (KSh)",currencyLabel:"Kenyan Shilling",region:"africa",difficulty:1,fact:"Kenya's Rift Valley is considered the cradle of humankind."},
+  {name:"Ghana",flag:"🇬🇭",capital:"Accra",currency:"Ghanaian Cedi (₵)",currencyLabel:"Ghanaian Cedi",region:"africa",difficulty:2,fact:"Ghana was the first sub-Saharan African country to gain independence, in 1957."},
+  {name:"Ethiopia",flag:"🇪🇹",capital:"Addis Ababa",currency:"Ethiopian Birr (Br)",currencyLabel:"Ethiopian Birr",region:"africa",difficulty:2,fact:"Ethiopia is the only African country never colonized, resisting Italian invasion in 1896."},
+  {name:"Tanzania",flag:"🇹🇿",capital:"Dodoma",currency:"Tanzanian Shilling (TSh)",currencyLabel:"Tanzanian Shilling",region:"africa",difficulty:2,fact:"Tanzania is home to Mount Kilimanjaro, the highest peak in Africa at 5,895 metres."},
+  {name:"Morocco",flag:"🇲🇦",capital:"Rabat",currency:"Moroccan Dirham (MAD)",currencyLabel:"Moroccan Dirham",region:"africa",difficulty:2,fact:"Morocco's Fez contains the world's oldest university, founded in 859 AD."},
+  {name:"Senegal",flag:"🇸🇳",capital:"Dakar",currency:"West African CFA Franc (XOF)",currencyLabel:"West African CFA Franc",region:"africa",difficulty:3,fact:"Senegal's Pink Lake (Lac Rose) gets its colour from the algae Dunaliella salina."},
+  {name:"Zimbabwe",flag:"🇿🇼",capital:"Harare",currency:"Zimbabwe Gold (ZiG)",currencyLabel:"Zimbabwe Gold",region:"africa",difficulty:3,fact:"Zimbabwe introduced a new currency called Zimbabwe Gold (ZiG) in 2024, backed by gold reserves."},
+  {name:"Uganda",flag:"🇺🇬",capital:"Kampala",currency:"Ugandan Shilling (USh)",currencyLabel:"Ugandan Shilling",region:"africa",difficulty:3,fact:"Uganda is home to more than half of the world's remaining mountain gorilla population."},
+  {name:"Cameroon",flag:"🇨🇲",capital:"Yaoundé",currency:"Central African CFA Franc (XAF)",currencyLabel:"Central African CFA Franc",region:"africa",difficulty:3,fact:"Cameroon is called 'Africa in miniature' — it has every major climate zone found across the continent."},
+  {name:"Mozambique",flag:"🇲🇿",capital:"Maputo",currency:"Mozambican Metical (MT)",currencyLabel:"Mozambican Metical",region:"africa",difficulty:4,fact:"Mozambique has an AK-47 on its national flag — the only country in the world to do so."},
+  {name:"Botswana",flag:"🇧🇼",capital:"Gaborone",currency:"Botswana Pula (P)",currencyLabel:"Botswana Pula",region:"africa",difficulty:4,fact:"'Pula' means 'rain' in Setswana — a precious resource in this largely arid country."},
+  {name:"Namibia",flag:"🇳🇦",capital:"Windhoek",currency:"Namibian Dollar (N$)",currencyLabel:"Namibian Dollar",region:"africa",difficulty:4,fact:"The Namib Desert is the world's oldest desert at around 55 million years old."},
+  {name:"Rwanda",flag:"🇷🇼",capital:"Kigali",currency:"Rwandan Franc (RF)",currencyLabel:"Rwandan Franc",region:"africa",difficulty:4,fact:"Rwanda is one of the cleanest countries in Africa — plastic bags have been banned since 2008."},
+  {name:"Ivory Coast",flag:"🇨🇮",capital:"Yamoussoukro",currency:"West African CFA Franc (XOF)",currencyLabel:"West African CFA Franc",region:"africa",difficulty:4,fact:"Ivory Coast produces about 45% of the world's cocoa supply."},
+  {name:"Zambia",flag:"🇿🇲",capital:"Lusaka",currency:"Zambian Kwacha (ZK)",currencyLabel:"Zambian Kwacha",region:"africa",difficulty:4,fact:"Victoria Falls, one of the world's largest waterfalls, sits on the border of Zambia and Zimbabwe."},
+  {name:"Algeria",flag:"🇩🇿",capital:"Algiers",currency:"Algerian Dinar (DZD)",currencyLabel:"Algerian Dinar",region:"africa",difficulty:3,fact:"Algeria is the largest country in Africa by area, covering over 2.3 million square kilometres."},
+  {name:"Angola",flag:"🇦🇴",capital:"Luanda",currency:"Angolan Kwanza (AOA)",currencyLabel:"Angolan Kwanza",region:"africa",difficulty:4,fact:"Angola is one of Africa's top oil producers."},
+  {name:"Sudan",flag:"🇸🇩",capital:"Khartoum",currency:"Sudanese Pound (SDG)",currencyLabel:"Sudanese Pound",region:"africa",difficulty:4,fact:"Sudan has more ancient pyramids than Egypt — over 200 Nubian pyramids dot its northern desert."},
+  {name:"Tunisia",flag:"🇹🇳",capital:"Tunis",currency:"Tunisian Dinar (TND)",currencyLabel:"Tunisian Dinar",region:"africa",difficulty:3,fact:"Tunisia was the filming location for many Star Wars desert scenes, including the planet Tatooine."},
+  {name:"Libya",flag:"🇱🇾",capital:"Tripoli",currency:"Libyan Dinar (LYD)",currencyLabel:"Libyan Dinar",region:"africa",difficulty:4,fact:"Libya has the largest proven oil reserves in Africa."},
+  {name:"Madagascar",flag:"🇲🇬",capital:"Antananarivo",currency:"Malagasy Ariary (MGA)",currencyLabel:"Malagasy Ariary",region:"africa",difficulty:4,fact:"Over 90% of Madagascar's wildlife is found nowhere else on Earth."},
+  // ASIA
+  {name:"Japan",flag:"🇯🇵",capital:"Tokyo",currency:"Japanese Yen (¥)",currencyLabel:"Yen",region:"asia",difficulty:1,fact:"Japan has the world's oldest company — Kongō Gumi, a construction firm founded in 578 AD."},
+  {name:"China",flag:"🇨🇳",capital:"Beijing",currency:"Chinese Yuan (¥)",currencyLabel:"Yuan (Renminbi)",region:"asia",difficulty:1,fact:"China has the world's largest population and is the second-largest economy."},
+  {name:"India",flag:"🇮🇳",capital:"New Delhi",currency:"Indian Rupee (₹)",currencyLabel:"Rupee",region:"asia",difficulty:1,fact:"India invented the number zero and the decimal number system."},
+  {name:"South Korea",flag:"🇰🇷",capital:"Seoul",currency:"South Korean Won (₩)",currencyLabel:"Won",region:"asia",difficulty:1,fact:"South Korea has the world's fastest internet speeds and highest smartphone penetration."},
+  {name:"Indonesia",flag:"🇮🇩",capital:"Jakarta",currency:"Indonesian Rupiah (Rp)",currencyLabel:"Rupiah",region:"asia",difficulty:2,fact:"Indonesia is the world's largest archipelago with over 17,000 islands."},
+  {name:"Thailand",flag:"🇹🇭",capital:"Bangkok",currency:"Thai Baht (฿)",currencyLabel:"Baht",region:"asia",difficulty:2,fact:"Thailand is the only Southeast Asian country never colonized by a European power."},
+  {name:"Vietnam",flag:"🇻🇳",capital:"Hanoi",currency:"Vietnamese Dong (₫)",currencyLabel:"Dong",region:"asia",difficulty:2,fact:"Vietnam is the world's second-largest exporter of coffee after Brazil."},
+  {name:"Pakistan",flag:"🇵🇰",capital:"Islamabad",currency:"Pakistani Rupee (₨)",currencyLabel:"Pakistani Rupee",region:"asia",difficulty:2,fact:"Pakistan is home to K2, the world's second-highest mountain at 8,611 metres."},
+  {name:"Malaysia",flag:"🇲🇾",capital:"Kuala Lumpur",currency:"Malaysian Ringgit (RM)",currencyLabel:"Ringgit",region:"asia",difficulty:2,fact:"The Petronas Towers in Kuala Lumpur were the world's tallest buildings from 1998 to 2004."},
+  {name:"Philippines",flag:"🇵🇭",capital:"Manila",currency:"Philippine Peso (₱)",currencyLabel:"Philippine Peso",region:"asia",difficulty:2,fact:"The Philippines is the world's largest exporter of nurses."},
+  {name:"Saudi Arabia",flag:"🇸🇦",capital:"Riyadh",currency:"Saudi Riyal (SAR)",currencyLabel:"Saudi Riyal",region:"asia",difficulty:2,fact:"Saudi Arabia has the world's second-largest oil reserves and is the top oil exporter."},
+  {name:"UAE",flag:"🇦🇪",capital:"Abu Dhabi",currency:"UAE Dirham (AED)",currencyLabel:"Dirham",region:"asia",difficulty:2,fact:"The Burj Khalifa in Dubai is the world's tallest building at 828 metres."},
+  {name:"Bangladesh",flag:"🇧🇩",capital:"Dhaka",currency:"Bangladeshi Taka (৳)",currencyLabel:"Taka",region:"asia",difficulty:3,fact:"Bangladesh is the world's most densely populated large country."},
+  {name:"Myanmar",flag:"🇲🇲",capital:"Naypyidaw",currency:"Myanmar Kyat (K)",currencyLabel:"Kyat",region:"asia",difficulty:3,fact:"Myanmar has over 2,000 ancient temples and pagodas in the ancient city of Bagan."},
+  {name:"Sri Lanka",flag:"🇱🇰",capital:"Sri Jayawardenepura Kotte",currency:"Sri Lankan Rupee (LKR)",currencyLabel:"Sri Lankan Rupee",region:"asia",difficulty:3,fact:"Sri Lanka is the world's leading exporter of Ceylon tea."},
+  {name:"Nepal",flag:"🇳🇵",capital:"Kathmandu",currency:"Nepalese Rupee (NPR)",currencyLabel:"Nepalese Rupee",region:"asia",difficulty:3,fact:"Nepal is home to 8 of the world's 10 highest mountains, including Everest."},
+  {name:"Mongolia",flag:"🇲🇳",capital:"Ulaanbaatar",currency:"Mongolian Tögrög (₮)",currencyLabel:"Tögrög",region:"asia",difficulty:4,fact:"Mongolia is the world's most sparsely populated country, with fewer than 2 people per sq km."},
+  {name:"Bhutan",flag:"🇧🇹",capital:"Thimphu",currency:"Bhutanese Ngultrum (Nu)",currencyLabel:"Ngultrum",region:"asia",difficulty:4,fact:"Bhutan measures its success by Gross National Happiness, not GDP."},
+  {name:"Iran",flag:"🇮🇷",capital:"Tehran",currency:"Iranian Rial (IRR)",currencyLabel:"Iranian Rial",region:"asia",difficulty:3,fact:"Iran is home to one of the world's oldest civilisations, with a history spanning over 7,000 years."},
+  {name:"Iraq",flag:"🇮🇶",capital:"Baghdad",currency:"Iraqi Dinar (IQD)",currencyLabel:"Iraqi Dinar",region:"asia",difficulty:3,fact:"Iraq is home to Mesopotamia, widely considered the cradle of civilisation."},
+  {name:"Turkey",flag:"🇹🇷",capital:"Ankara",currency:"Turkish Lira (₺)",currencyLabel:"Turkish Lira",region:"asia",difficulty:2,fact:"Turkey is the only country that spans two continents — Europe and Asia."},
+  {name:"Israel",flag:"🇮🇱",capital:"Jerusalem",currency:"Israeli Shekel (₪)",currencyLabel:"Israeli Shekel",region:"asia",difficulty:3,fact:"Israel has more museums per capita than any other country in the world."},
+  {name:"Jordan",flag:"🇯🇴",capital:"Amman",currency:"Jordanian Dinar (JOD)",currencyLabel:"Jordanian Dinar",region:"asia",difficulty:3,fact:"Jordan's Petra, carved into rose-red rock, is one of the New Seven Wonders of the World."},
+  {name:"Kuwait",flag:"🇰🇼",capital:"Kuwait City",currency:"Kuwaiti Dinar (KWD)",currencyLabel:"Kuwaiti Dinar",region:"asia",difficulty:3,fact:"The Kuwaiti Dinar is the world's highest-valued currency unit."},
+  {name:"Qatar",flag:"🇶🇦",capital:"Doha",currency:"Qatari Riyal (QAR)",currencyLabel:"Qatari Riyal",region:"asia",difficulty:3,fact:"Qatar has among the highest GDP per capita in the world."},
+  {name:"Oman",flag:"🇴🇲",capital:"Muscat",currency:"Omani Rial (OMR)",currencyLabel:"Omani Rial",region:"asia",difficulty:4,fact:"Oman is one of the oldest continuously inhabited regions in the world."},
+  {name:"Singapore",flag:"🇸🇬",capital:"Singapore",currency:"Singapore Dollar (SGD)",currencyLabel:"Singapore Dollar",region:"asia",difficulty:3,fact:"Singapore is a city-state and one of only three surviving city-states in the world."},
+  {name:"Cambodia",flag:"🇰🇭",capital:"Phnom Penh",currency:"Cambodian Riel (KHR)",currencyLabel:"Cambodian Riel",region:"asia",difficulty:4,fact:"Angkor Wat in Cambodia is the world's largest religious monument."},
+  // EUROPE
+  {name:"France",flag:"🇫🇷",capital:"Paris",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:1,fact:"France is the world's most visited country, attracting over 90 million tourists a year."},
+  {name:"Germany",flag:"🇩🇪",capital:"Berlin",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:1,fact:"Germany invented the car, aspirin, and the MP3 format."},
+  {name:"Italy",flag:"🇮🇹",capital:"Rome",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:1,fact:"Italy has more UNESCO World Heritage Sites than any other country in the world."},
+  {name:"Spain",flag:"🇪🇸",capital:"Madrid",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:1,fact:"Spain has the second-largest number of UNESCO World Heritage Sites in Europe."},
+  {name:"United Kingdom",flag:"🇬🇧",capital:"London",currency:"British Pound (£)",currencyLabel:"British Pound Sterling",region:"europe",difficulty:1,fact:"The UK invented the World Wide Web, the telephone, and the television."},
+  {name:"Netherlands",flag:"🇳🇱",capital:"Amsterdam",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:2,fact:"The Netherlands is the world's second-largest exporter of food and agricultural products."},
+  {name:"Sweden",flag:"🇸🇪",capital:"Stockholm",currency:"Swedish Krona (kr)",currencyLabel:"Swedish Krona",region:"europe",difficulty:2,fact:"Sweden gave the world IKEA, Spotify, Minecraft, and Skype."},
+  {name:"Poland",flag:"🇵🇱",capital:"Warsaw",currency:"Polish Złoty (zł)",currencyLabel:"Polish Złoty",region:"europe",difficulty:2,fact:"Poland has the largest number of castles in Europe."},
+  {name:"Portugal",flag:"🇵🇹",capital:"Lisbon",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:2,fact:"Portuguese is the 6th most spoken language in the world, used on 5 continents."},
+  {name:"Switzerland",flag:"🇨🇭",capital:"Bern",currency:"Swiss Franc (CHF)",currencyLabel:"Swiss Franc",region:"europe",difficulty:2,fact:"Switzerland has not been in a state of war internationally since 1815."},
+  {name:"Greece",flag:"🇬🇷",capital:"Athens",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:2,fact:"Greece has more archaeological museums than any other country in the world."},
+  {name:"Austria",flag:"🇦🇹",capital:"Vienna",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:2,fact:"Vienna has been ranked as the world's most liveable city multiple years in a row."},
+  {name:"Norway",flag:"🇳🇴",capital:"Oslo",currency:"Norwegian Krone (kr)",currencyLabel:"Norwegian Krone",region:"europe",difficulty:3,fact:"Norway invented the cheese slicer and the paper clip."},
+  {name:"Czech Republic",flag:"🇨🇿",capital:"Prague",currency:"Czech Koruna (Kč)",currencyLabel:"Czech Koruna",region:"europe",difficulty:3,fact:"The Czech Republic has the highest beer consumption per capita in the world."},
+  {name:"Hungary",flag:"🇭🇺",capital:"Budapest",currency:"Hungarian Forint (Ft)",currencyLabel:"Hungarian Forint",region:"europe",difficulty:3,fact:"Hungary invented the Rubik's Cube, the ballpoint pen, and the hologram."},
+  {name:"Croatia",flag:"🇭🇷",capital:"Zagreb",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:3,fact:"The necktie (cravat) was invented in Croatia — 'cravat' comes from 'Croat'."},
+  {name:"Romania",flag:"🇷🇴",capital:"Bucharest",currency:"Romanian Leu (lei)",currencyLabel:"Romanian Leu",region:"europe",difficulty:3,fact:"Romania is home to Bran Castle, widely associated with the legend of Dracula."},
+  {name:"Iceland",flag:"🇮🇸",capital:"Reykjavik",currency:"Icelandic Króna (kr)",currencyLabel:"Icelandic Króna",region:"europe",difficulty:4,fact:"Iceland is the world's most peaceful country and runs almost entirely on renewable energy."},
+  {name:"Denmark",flag:"🇩🇰",capital:"Copenhagen",currency:"Danish Krone (kr)",currencyLabel:"Danish Krone",region:"europe",difficulty:2,fact:"Denmark consistently ranks as one of the happiest countries in the world."},
+  {name:"Finland",flag:"🇫🇮",capital:"Helsinki",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:3,fact:"Finland has the most heavy metal bands per capita of any country in the world."},
+  {name:"Belgium",flag:"🇧🇪",capital:"Brussels",currency:"Euro (€)",currencyLabel:"Euro",region:"europe",difficulty:2,fact:"Belgian fries are the origin of what the world calls 'French fries'."},
+  {name:"Ukraine",flag:"🇺🇦",capital:"Kyiv",currency:"Ukrainian Hryvnia (₴)",currencyLabel:"Ukrainian Hryvnia",region:"europe",difficulty:3,fact:"Ukraine is the largest country entirely within Europe."},
+  {name:"Serbia",flag:"🇷🇸",capital:"Belgrade",currency:"Serbian Dinar (RSD)",currencyLabel:"Serbian Dinar",region:"europe",difficulty:4,fact:"Nikola Tesla, inventor of alternating current electricity, was born in Serbia."},
+  {name:"Bulgaria",flag:"🇧🇬",capital:"Sofia",currency:"Bulgarian Lev (BGN)",currencyLabel:"Bulgarian Lev",region:"europe",difficulty:4,fact:"Bulgaria is the oldest country in Europe that has never changed its name since 681 AD."},
+  // AMERICAS
+  {name:"United States",flag:"🇺🇸",capital:"Washington D.C.",currency:"US Dollar ($)",currencyLabel:"US Dollar",region:"americas",difficulty:1,fact:"The US has the world's largest economy and most Fortune 500 companies."},
+  {name:"Brazil",flag:"🇧🇷",capital:"Brasília",currency:"Brazilian Real (R$)",currencyLabel:"Brazilian Real",region:"americas",difficulty:1,fact:"Brazil contains about 60% of the Amazon rainforest, the world's largest tropical forest."},
+  {name:"Canada",flag:"🇨🇦",capital:"Ottawa",currency:"Canadian Dollar (CA$)",currencyLabel:"Canadian Dollar",region:"americas",difficulty:1,fact:"Canada has the longest coastline in the world and more lakes than all other countries combined."},
+  {name:"Mexico",flag:"🇲🇽",capital:"Mexico City",currency:"Mexican Peso (MXN)",currencyLabel:"Mexican Peso",region:"americas",difficulty:1,fact:"Mexico City is built on the ruins of the ancient Aztec capital Tenochtitlan."},
+  {name:"Argentina",flag:"🇦🇷",capital:"Buenos Aires",currency:"Argentine Peso (ARS)",currencyLabel:"Argentine Peso",region:"americas",difficulty:2,fact:"Argentina is the birthplace of tango and home to the famous Iguazu Falls."},
+  {name:"Colombia",flag:"🇨🇴",capital:"Bogotá",currency:"Colombian Peso (COP)",currencyLabel:"Colombian Peso",region:"americas",difficulty:2,fact:"Colombia is the only South American country with coastlines on both the Pacific Ocean and Caribbean Sea."},
+  {name:"Chile",flag:"🇨🇱",capital:"Santiago",currency:"Chilean Peso (CLP)",currencyLabel:"Chilean Peso",region:"americas",difficulty:2,fact:"Chile is the world's longest country from north to south, stretching over 4,300 km."},
+  {name:"Peru",flag:"🇵🇪",capital:"Lima",currency:"Peruvian Sol (S/.)",currencyLabel:"Peruvian Sol",region:"americas",difficulty:2,fact:"Peru is home to Machu Picchu, one of the New Seven Wonders of the World."},
+  {name:"Venezuela",flag:"🇻🇪",capital:"Caracas",currency:"Venezuelan Bolívar (VES)",currencyLabel:"Venezuelan Bolívar",region:"americas",difficulty:3,fact:"Venezuela is home to Angel Falls, the world's highest uninterrupted waterfall."},
+  {name:"Cuba",flag:"🇨🇺",capital:"Havana",currency:"Cuban Peso (CUP)",currencyLabel:"Cuban Peso",region:"americas",difficulty:3,fact:"Cuba has one of the highest literacy rates in the world at 99.8%."},
+  {name:"Ecuador",flag:"🇪🇨",capital:"Quito",currency:"US Dollar ($)",currencyLabel:"US Dollar",region:"americas",difficulty:3,fact:"Ecuador is the only country named after a geographical feature — the equator."},
+  {name:"Bolivia",flag:"🇧🇴",capital:"Sucre",currency:"Bolivian Boliviano (BOB)",currencyLabel:"Bolivian Boliviano",region:"americas",difficulty:3,fact:"Bolivia has two capitals — Sucre and La Paz — and is home to the world's highest navigable lake, Titicaca."},
+  {name:"Costa Rica",flag:"🇨🇷",capital:"San José",currency:"Costa Rican Colón (₡)",currencyLabel:"Costa Rican Colón",region:"americas",difficulty:3,fact:"Costa Rica abolished its military in 1948 and spends that budget on education and healthcare."},
+  {name:"Jamaica",flag:"🇯🇲",capital:"Kingston",currency:"Jamaican Dollar (J$)",currencyLabel:"Jamaican Dollar",region:"americas",difficulty:3,fact:"Jamaica is the birthplace of reggae music and Bob Marley."},
+  {name:"Paraguay",flag:"🇵🇾",capital:"Asunción",currency:"Paraguayan Guaraní (₲)",currencyLabel:"Paraguayan Guaraní",region:"americas",difficulty:4,fact:"Paraguay's flag is the only national flag that differs on its two sides."},
+  {name:"Uruguay",flag:"🇺🇾",capital:"Montevideo",currency:"Uruguayan Peso ($U)",currencyLabel:"Uruguayan Peso",region:"americas",difficulty:4,fact:"Uruguay was the first country in the world to fully legalise marijuana at a national level."},
+  {name:"Guatemala",flag:"🇬🇹",capital:"Guatemala City",currency:"Guatemalan Quetzal (GTQ)",currencyLabel:"Guatemalan Quetzal",region:"americas",difficulty:3,fact:"Guatemala is home to Tikal, one of the most impressive ancient Mayan sites in the world."},
+  {name:"Panama",flag:"🇵🇦",capital:"Panama City",currency:"Panamanian Balboa (PAB)",currencyLabel:"Panamanian Balboa",region:"americas",difficulty:3,fact:"The Panama Canal connects the Atlantic and Pacific Oceans, shortening shipping routes by thousands of miles."},
+  {name:"Haiti",flag:"🇭🇹",capital:"Port-au-Prince",currency:"Haitian Gourde (HTG)",currencyLabel:"Haitian Gourde",region:"americas",difficulty:4,fact:"Haiti was the first Black republic in the world, gaining independence in 1804."},
+  {name:"Dominican Republic",flag:"🇩🇴",capital:"Santo Domingo",currency:"Dominican Peso (DOP)",currencyLabel:"Dominican Peso",region:"americas",difficulty:4,fact:"Santo Domingo has the oldest European street in the Americas."},
+  // OCEANIA
+  {name:"Australia",flag:"🇦🇺",capital:"Canberra",currency:"Australian Dollar (A$)",currencyLabel:"Australian Dollar",region:"oceania",difficulty:1,fact:"Australia is the only country that is also a continent, and has more kangaroos than people."},
+  {name:"New Zealand",flag:"🇳🇿",capital:"Wellington",currency:"New Zealand Dollar (NZ$)",currencyLabel:"New Zealand Dollar",region:"oceania",difficulty:1,fact:"New Zealand was the first country in the world to give women the right to vote, in 1893."},
+  {name:"Fiji",flag:"🇫🇯",capital:"Suva",currency:"Fijian Dollar (FJ$)",currencyLabel:"Fijian Dollar",region:"oceania",difficulty:2,fact:"Fiji consists of more than 300 islands, of which about 110 are inhabited."},
+  {name:"Papua New Guinea",flag:"🇵🇬",capital:"Port Moresby",currency:"Papua New Guinean Kina (K)",currencyLabel:"Papua New Guinean Kina",region:"oceania",difficulty:3,fact:"Papua New Guinea is one of the world's most linguistically diverse countries with over 800 languages."},
+  {name:"Samoa",flag:"🇼🇸",capital:"Apia",currency:"Samoan Tālā (T)",currencyLabel:"Samoan Tālā",region:"oceania",difficulty:4,fact:"Samoa is one of the first countries to see each new day due to its location near the International Date Line."},
+  {name:"Vanuatu",flag:"🇻🇺",capital:"Port Vila",currency:"Vanuatu Vatu (VT)",currencyLabel:"Vanuatu Vatu",region:"oceania",difficulty:5,fact:"Vanuatu has one of the world's most accessible active volcanoes on Tanna island."},
+  {name:"Tonga",flag:"🇹🇴",capital:"Nukuʻalofa",currency:"Tongan Paʻanga (T$)",currencyLabel:"Tongan Paʻanga",region:"oceania",difficulty:5,fact:"Tonga is the last Polynesian monarchy and the only Pacific island nation never colonised."},
+  {name:"Solomon Islands",flag:"🇸🇧",capital:"Honiara",currency:"Solomon Islands Dollar (SBD)",currencyLabel:"Solomon Islands Dollar",region:"oceania",difficulty:5,fact:"The Solomon Islands was the site of one of the most intense naval battles of World War II."},
 ];
 
 // ========================= SETTINGS STATE =========================
@@ -1035,13 +1072,14 @@ function generateQuestions(pool, count=30, seed=null) {
 
     const isTyping=seed!=null?seededRand(seed+i*11)<0.25:Math.random()<0.25;
 
-    // Build wrong options — never include country whose name appears in the currency string
+    // Build wrong options — never include a country whose name appears in the correct currencyLabel
     const safeOthers=COUNTRIES.filter(c=>{
       if(c.name===country.name) return false;
       if(type==='currency'){
-        // Exclude countries whose name is a substring of the correct currency label
-        const currLower=country.currency.toLowerCase();
-        if(currLower.includes(c.name.toLowerCase())) return false;
+        const labelLower=(country.currencyLabel||country.currency).toLowerCase();
+        if(labelLower.includes(c.name.toLowerCase())) return false;
+        // Also exclude if the wrong option's currencyLabel matches the correct answer's label (shared currency)
+        // to avoid confusing "Euro" options — keep them but they're valid distractors
       }
       return true;
     });
@@ -1119,13 +1157,10 @@ function loadQuestion() {
     typeTag='🏛️ Capital';
     qText=q.isTyping?`Type the country whose capital is <strong>${q.country.capital}</strong>`:`Which country has <strong>${q.country.capital}</strong> as its capital?`;
   } else {
-    // Extract just the symbol/code part — strip the country name to avoid leaking the answer
     const currSymbol = getCurrencySymbol(q.country.currency);
     display=`<span class="currency-display">${currSymbol}</span>`;
     typeTag='💰 Currency';
-    // Use the full currency name but never mention the country
-    const currName=q.country.currency;
-    qText=q.isTyping?`Type the country that uses the <strong>${currName}</strong>`:`Which country uses the <strong>${currName}</strong>?`;
+    qText=q.isTyping?`Type the country that uses the <strong>${q.country.currencyLabel}</strong>`:`Which country uses the <strong>${q.country.currencyLabel}</strong>?`;
   }
 
   $('qTypeTag').textContent=typeTag;
@@ -1138,6 +1173,7 @@ function loadQuestion() {
   requestAnimationFrame(()=>{ $('qDisplay').style.animation='popIn 0.4s cubic-bezier(0.34,1.56,0.64,1)'; });
   $('qText').innerHTML=qText;
   $('hintReveal').textContent=''; $('hintReveal').classList.remove('show');
+  $('factReveal').textContent=''; $('factReveal').classList.remove('show');
 
   // Reset card slide-in animation on each question
   const card=$('questionCard');
@@ -1197,6 +1233,13 @@ function submitTyped() {
   if(correct){ inp.classList.add('correct'); handleCorrect(); } else { inp.classList.add('wrong'); inp.value=q.country.name; handleWrong(); }
   setTimeout(nextQuestion, 1400);
 }
+function showFact() {
+  const q=G.questions[G.current];
+  if(q&&q.country.fact){
+    $('factReveal').innerHTML=`💡 <strong>Did you know?</strong> ${q.country.fact}`;
+    $('factReveal').classList.add('show');
+  }
+}
 function handleCorrect() {
   G.correct++; G.combo++;
   if(G.combo>G.maxCombo) G.maxCombo=G.combo;
@@ -1205,13 +1248,13 @@ function handleCorrect() {
   G.score+=10+tb+cb;
   animateScore($('scoreDisplay'), G.score-(10+tb+cb), G.score, 500);
   $('comboDisplay').textContent=`x${G.combo}`;
-  sfx.correct(); showFeedback('✅');
+  sfx.correct(); showFeedback('✅'); showFact();
   if(G.combo>=3){ showComboToast(`🔥 Combo x${G.combo}! +${cb}pts`); sfx.combo(); }
 }
 function handleWrong(isTimeout=false) {
   G.combo=0; $('comboDisplay').textContent='x0';
   if(!isTimeout) sfx.wrong();
-  showFeedback(isTimeout?'⏰':'❌');
+  showFeedback(isTimeout?'⏰':'❌'); showFact();
   $('questionCard').style.animation='none';
   requestAnimationFrame(()=>{ $('questionCard').style.animation='shake 0.4s ease'; });
   if(CFG.livesOn){ G.lives=Math.max(0,G.lives-1); renderLives(); if(G.lives>0) sfx.loseLife(); }
